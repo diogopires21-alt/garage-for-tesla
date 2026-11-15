@@ -2,3 +2,5 @@ node_modules/
 test/*.png
 test/harness.bundle.js
 ref/
+node_modules
+models/tools/*.bundle.js

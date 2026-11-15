@@ -29,6 +29,7 @@ Cartão personalizado para o Home Assistant, gratuito e público (repo no GitHub
 - Falta um **Model Y 2020–2024** realista. O de tonielpro520 foi recusado (pouco realista); SQUIR3D é Editorial (não serve). Sites sugeridos: Sketchfab (pesquisar "Model Y 2022/2023/Performance"), Poly Haven, BlenderKit (ver licença), Free3D/CGTrader/TurboSquid grátis (só se CC0/CC BY).
 - Mais tarde: Model S, Model X, Cybertruck.
 - Os modelos novos são preparados com `models/tools/prep.mjs`: rodar (frente = +X, esquerda = −Z), nomes fixos de materiais (Paint, Glass, Tyre, Rim, HeadLight, TailLight, RearLightBar, Seats), separar faróis e bancos, comprimir (meshopt). Os originais estão em `models/src/`.
+- Matrícula: o Model 3 2017–2023 vinha com matrícula e suporte (frente e trás); foram tirados a 15/11/2026 com `models/tools/drop.mjs` (materiais White e LicensePlate* + ilhas do suporte em BlackWash com `--suporte BlackWash`). Num modelo novo com matrícula, usar o mesmo.
 - Cada modelo tem afinações próprias em `MODELS[...].scene` (zonas das portas e capô) em `src/slots.js`.
 
 ## Cores (só as que existiram de fábrica)
@@ -54,12 +55,11 @@ Cartão personalizado para o Home Assistant, gratuito e público (repo no GitHub
 
 ## Backlog
 
-1. Tirar a matrícula do modelo do Model 3 antigo (2017–2023).
-2. Animação nos bancos quando o aquecimento dos assentos está ligado (ver como fazer).
-3. Volante a vermelho quando o aquecimento do volante está ligado.
-4. Riscos em "XX" no capô do Highland (não resolvido; não gastar muito tempo nisto).
-5. Model Y 2020–2024; mais modelos.
-6. Tornar o repositório público e preparar para o Marketplace do HA (rever README, licenças/créditos, retirar ou manter o HANDOFF.md, criar a primeira versão/release). Só com aprovação.
+1. Animação nos bancos quando o aquecimento dos assentos está ligado (ver como fazer).
+2. Volante a vermelho quando o aquecimento do volante está ligado.
+3. Riscos em "XX" no capô do Highland (não resolvido; não gastar muito tempo nisto).
+4. Model Y 2020–2024; mais modelos.
+5. Tornar o repositório público e preparar para o Marketplace do HA (rever README, licenças/créditos, retirar ou manter o HANDOFF.md, criar a primeira versão/release). Só com aprovação.
 
 ## Mockup
 

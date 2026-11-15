@@ -4,6 +4,7 @@
 //  - separa peças que estão misturadas no mesmo material (faróis da frente, bancos)
 //  - comprime (meshopt) e tira o que não é usado
 // uso: node models/tools/prep.mjs <m3_classic|my_juniper> <entrada.glb> <saída.glb>
+// m3_classic: depois correr  node models/tools/drop.mjs <saída.glb> <saída.glb> --suporte BlackWash  (tira o suporte da matrícula)
 import { NodeIO, getBounds, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, KHRMaterialsTransmission } from '@gltf-transform/extensions';
 import { dedup, prune, meshopt, weld } from '@gltf-transform/functions';
@@ -22,6 +23,7 @@ const CFG = {
     rename: { carpaint: 'Paint', glass: 'Glass', glassDark: 'GlassDark', TireRubber: 'Tyre', Tire_Rims: 'Rim', RedLight: 'TailLight' },
     split: [{ from: 'innerLights', to: 'HeadLight', tri: f => f[0] > .5 }],   // a mesma peça tem o interior dos faróis da frente e de trás
     seats: 'GlossyInterior',
+    drop: ['White', 'LicensePlateText', 'LicensePlateRed', 'LicensePlateYellow'],   // matrícula (frente e trás)
     tweak: {
       Glass: { color: [.01, .02, .03, .35], m: .05, r: 0 }, GlassDark: { color: [.01, .015, .02, .55], m: .05, r: 0 },
       HeadLight: { color: [.9, .9, .92, 1], m: .2, r: .2 }, TailLight: { color: [.25, 0, 0, 1], m: .6, r: .15 },
@@ -61,6 +63,7 @@ scene.addChild(top);
 const byName = n => root.listMaterials().find(m => m.getName() === n);
 for (const [a, b] of Object.entries(CFG.rename || {})) { const m = byName(a); if (!m) throw new Error('falta ' + a); m.setName(b); }
 for (const [a, b] of Object.entries(CFG.merge || {})) { const src = byName(a), dst = byName(b); for (const mesh of root.listMeshes()) for (const p of mesh.listPrimitives()) if (p.getMaterial() === src) p.setMaterial(dst); }
+for (const name of CFG.drop || []) { const m = byName(name); for (const mesh of root.listMeshes()) for (const p of mesh.listPrimitives()) if (p.getMaterial() === m) { mesh.removePrimitive(p); p.dispose(); } }
 for (const m of root.listMaterials()) m.setExtension('KHR_materials_transmission', null);
 root.listExtensionsUsed().filter(e => e.extensionName === 'KHR_materials_transmission').forEach(e => e.dispose());
 
