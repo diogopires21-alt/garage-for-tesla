@@ -1,0 +1,25 @@
+{
+  "name": "garage-for-tesla",
+  "version": "0.1.0",
+  "description": "3D Tesla dashboard card for Home Assistant",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "esbuild": "^0.24.2",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.1.1",
+    "@gltf-transform/extensions": "^4.1.1",
+    "@gltf-transform/functions": "^4.1.1",
+    "@mdi/js": "^7.4.47",
+    "meshoptimizer": "^0.22.0",
+    "sharp": "^0.33.5"
+  },
+  "private": true,
+  "type": "module"
+}

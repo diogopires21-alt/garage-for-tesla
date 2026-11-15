@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2026 Diogo Pires
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+The 3D car models in dist/*.glb are NOT covered by the MIT licence:
+
+- dist/garage-for-tesla-model3-highland.glb: "2024 Tesla Model 3" by RBLXSupercars
+  (https://sketchfab.com/3d-models/2024-tesla-model-3-fd22be415215453693d67e33aa7812d0),
+  CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+- dist/garage-for-tesla-model3-classic.glb: "Tesla M3 model" by wintrez
+  (https://sketchfab.com/3d-models/tesla-m3-model-3a602469d7874d1397efa67182198705),
+  CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+- dist/garage-for-tesla-modely-juniper.glb: "2025 Tesla Model Y" by BloxBloger
+  (https://sketchfab.com/3d-models/2025-tesla-model-y-619601e7800d418da5922c4fa7833f74),
+  CC BY-NC 4.0 (https://creativecommons.org/licenses/by-nc/4.0/) - non-commercial use only.
+
+All were compressed (meshopt/WebP), rotated, and had materials renamed or split
+(lights, seats); the paint and seat colours are changed at runtime.
