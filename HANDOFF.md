@@ -1,6 +1,6 @@
 # Garage for Tesla — passagem de projeto
 
-Estado em 12/11/2026. Este documento e o ficheiro `garage-for-tesla.zip` (anexar no primeiro chat) têm tudo o que é preciso para continuar.
+Estado em 15/11/2026. O código está no GitHub, no repositório **privado** `diogopires21-alt/garage-for-tesla` (ramo `main`). Num chat novo, o Claude liga o repositório à sessão e trabalha a partir dele — já não é preciso anexar o zip.
 
 ## O que é
 
@@ -13,7 +13,8 @@ Cartão personalizado para o Home Assistant, gratuito e público (repo no GitHub
 - o mais plug&play possível: encontra o carro e as entidades sozinho (Tessie, Teslemetry, Tesla Fleet; Tesla Custom por nome).
 
 **Regras do Diogo**
-- Nada vai para o GitHub sem aprovação. Antes de publicar, mostrar mockup. A conta do GitHub ainda não está decidida.
+- Conta do GitHub: a pessoal, `diogopires21-alt`. Repositório criado privado a 15/11/2026. Tornar público só com aprovação explícita e depois de mostrar o mockup.
+- Alterações vão para o repositório privado depois de testadas; o Diogo vê o mockup antes.
 - Perguntas ("dá para…?", "o que achas?") pedem só resposta. Só avançar com ordem explícita ("faz", "avança", "sim").
 - Respostas em PT-PT, curtas, diretas, linguagem simples.
 
@@ -58,7 +59,7 @@ Cartão personalizado para o Home Assistant, gratuito e público (repo no GitHub
 3. Volante a vermelho quando o aquecimento do volante está ligado.
 4. Riscos em "XX" no capô do Highland (não resolvido; não gastar muito tempo nisto).
 5. Model Y 2020–2024; mais modelos.
-6. Publicação no GitHub (depois de aprovação e de escolher a conta).
+6. Tornar o repositório público e preparar para o Marketplace do HA (rever README, licenças/créditos, retirar ou manter o HANDOFF.md, criar a primeira versão/release). Só com aprovação.
 
 ## Mockup
 
@@ -66,10 +67,10 @@ https://claude.ai/artifact/NrwPJH26bn1sJMYCMCK8js (slug `b108df48-32df-42a1-809f
 
 ## Como trabalhar com o código (para o Claude)
 
-- Descompactar o zip e `npm install`, depois `node build.mjs` (gera `dist/` e `test/harness.bundle.js`).
+- Ligar o repositório com `add_repo` (diogopires21-alt/garage-for-tesla), clonar e `npm install`, depois `node build.mjs` (gera `dist/` e `test/harness.bundle.js`).
 - Servidor de teste: `python3 -m http.server 8765` na raiz; página `test/index.html?model=...&color=...&theme=dark|light&int=black&chg=charging&door=1&doors=1&frunk=1&trunk=1&port=1&tw=1&peak=1`.
 - Capturas: `python3 test/shot.py "<query>" saida.png 1400 820` (Playwright + Chrome com swiftshader; lento, até ~1 s por frame).
 - `mock/` = cópia de `dist/garage-for-tesla-card.js` + `test/harness.bundle.js` + `car-model*.js`.
-- Ficheiros: `src/card.js` (cartão), `src/scene.js` (3D), `src/slots.js` (entidades, modelos, cores), `src/styles.js`, `src/i18n.js`, `src/editor.js`. `ref/` tem o código das integrações Tessie/Teslemetry/Tesla Fleet para consulta.
+- Ficheiros: `src/card.js` (cartão), `src/scene.js` (3D), `src/slots.js` (entidades, modelos, cores), `src/styles.js`, `src/i18n.js`, `src/editor.js`. `ref/` (código das integrações Tessie/Teslemetry/Tesla Fleet, só para consulta) não vai para o GitHub (está no .gitignore); se for preciso, está no último zip.
 - Cuidado: comentários `//` acrescentados a meio de uma linha já engoliram código três vezes. Comentar só no fim da linha.
 - Shaders próprios precisam dos includes `logdepthbuf` (o renderer usa `logarithmicDepthBuffer`).
