@@ -192,7 +192,12 @@ class GarageForTeslaCard extends HTMLElement {
     const w = k => { const s = this._ok('tpms_warn_' + k); return !!(s && s.state === 'on'); };
     const op = k => { const x = this._ok(k); return !!(x && (x.state === 'open' || x.state === 'on')); };
     const se = this._ok('sentry');
+    const LV = { off: 0, low: 1, medium: 2, med: 2, high: 3, '0': 0, '1': 1, '2': 2, '3': 3 };
+    const lvl = k => { const x = this._ok(k); return x ? LV[String(x.state).toLowerCase()] || 0 : 0; };
+    const sh = this._ok('steering_heat'), sl = this._ok('steering_level');
+    const steerHeat = !!((sh && sh.state === 'on') || (sl && lvl('steering_level') > 0));
     this._scene.setCarState({ sentry: !!(se && se.state === 'on'), charging, plugged: !!plugged, climate: !!(cl && cl.state !== 'off'), tpmsWarn: { fl: w('fl'), fr: w('fr'), rl: w('rl'), rr: w('rr') },
+      seatHeat: { fl: lvl('seat_fl'), fr: lvl('seat_fr'), rl: lvl('seat_rl'), rr: lvl('seat_rr') }, steerHeat,
       open: { port: op('charge_port'), frunk: op('frunk'), trunk: op('trunk'), df: op('door_df'), dr: op('door_dr'), pf: op('door_pf'), pr: op('door_pr') } });
   }
 

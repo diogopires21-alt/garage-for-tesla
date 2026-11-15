@@ -53,18 +53,17 @@ Cartão personalizado para o Home Assistant, gratuito e público (repo no GitHub
 - **Sentinela:** luz vermelha oval por baixo da frente, a varrer entre as rodas da frente a velocidade constante com rasto; o verde do carregamento apaga-se nessa zona.
 - **Buzina:** anel azul a partir de baixo da frente.
 - **Peças abertas:** frunk e cada porta piscam a laranja inteiros; bagageira e porta de carga só com um ponto laranja a piscar e o ícone da etiqueta a laranja; roda com pressão baixa a piscar a laranja.
+- **Aquecimento (15/11/2026, aprovado):** cada banco com aquecimento ligado (condutor, passageiro, trás esq./dir.) pisca a vermelho inteiro, ao ritmo das peças abertas (1,2 s); o volante aquecido faz o mesmo. O nível (1–3) não muda nada. Sem luz geral dentro do carro (foi experimentado e recusado). Código: `_heatParts` em `src/scene.js` separa cada banco e o volante em peças próprias; o volante de cada modelo está em `MODELS[...].scene.steer` (material) em `src/slots.js`.
 
 ## Backlog
 
-1. Animação nos bancos quando o aquecimento dos assentos está ligado (ver como fazer).
-2. Volante a vermelho quando o aquecimento do volante está ligado.
-3. Riscos em "XX" no capô do Highland (não resolvido; não gastar muito tempo nisto).
-4. Model Y 2020–2024; mais modelos.
-5. Tornar o repositório público e preparar para o Marketplace do HA (rever README, licenças/créditos, retirar ou manter o HANDOFF.md, criar a primeira versão/release). Só com aprovação.
+1. Riscos em "XX" no capô do Highland (não resolvido; não gastar muito tempo nisto).
+2. Model Y 2020–2024; mais modelos.
+3. Tornar o repositório público e preparar para o Marketplace do HA (rever README, licenças/créditos, retirar ou manter o HANDOFF.md, criar a primeira versão/release). Só com aprovação.
 
 ## Mockup
 
-https://claude.ai/artifact/NrwPJH26bn1sJMYCMCK8js (slug `b108df48-32df-42a1-809f-6ad8488d6cf2`). Barra de cima com modelo, tema, cor, interior, carregamento, aviso de pneu, porta aberta e telemóvel. Os .glb vão embutidos em base64 (`mock/car-model*.js`) porque o alojamento não serve .glb. Para republicar: `publish_files` em modo patch com a última versão.
+https://claude.ai/artifact/NrwPJH26bn1sJMYCMCK8js (slug `b108df48-32df-42a1-809f-6ad8488d6cf2`). Barra de cima com modelo, tema, cor, interior, carregamento, aviso de pneu, porta aberta e telemóvel. O aquecimento dos bancos (incluindo os de trás) e do volante experimenta-se no menu do próprio cartão. Os .glb vão embutidos em base64 (`mock/car-model*.js`) porque o alojamento não serve .glb. Para republicar: `publish_files` em modo patch com a última versão.
 
 ## Como trabalhar com o código (para o Claude)
 

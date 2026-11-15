@@ -81,14 +81,14 @@ export const MODELS = {
     name: 'Model 3 (2017–2023)', file: 'garage-for-tesla-model3-classic.glb', paint: 'Paint', length: 4.694,
     colors: ['pearl_white', 'midnight_silver', 'silver_metallic', 'solid_black', 'deep_blue', 'red_multicoat'],
     // zonas medidas no modelo (frações do comprimento, 0 = traseira): portas [fim de trás, pilar B, frente], capô a partir de frunkX
-    scene: { trimName: null, regions: { door: [.21, .46, .72], frunkX: .72, trunkX: .17 } },
+    scene: { trimName: null, regions: { door: [.21, .46, .72], frunkX: .72, trunkX: .17 }, steer: { mat: 'GlossyInterior' } },
     credit: { title: 'Tesla M3 model', author: 'wintrez', url: 'https://sketchfab.com/3d-models/tesla-m3-model-3a602469d7874d1397efa67182198705', license: 'CC BY 4.0', licenseUrl: 'https://creativecommons.org/licenses/by/4.0/' },
   },
   modely_juniper: {
     name: 'Model Y (2025+)', file: 'garage-for-tesla-modely-juniper.glb', paint: 'Paint', length: 4.797,
     colors: ['pearl_white', 'stealth_grey', 'quicksilver', 'diamond_black', 'solid_black', 'ultra_red', 'glacier_blue', 'deep_blue', 'marine_blue', 'frost_blue', 'coastal_blue'],
     // no Model Y a carroçaria vem em muitas peças pequenas (portas ~250 vértices); o capô escolhe-se acima de meia altura (o para-choques é maior)
-    scene: { trimName: null, regions: { door: [.22, .45, .72], frunkX: .72, trunkX: .17, doorMin: 150, hoodY: .5 } },
+    scene: { trimName: null, regions: { door: [.22, .45, .72], frunkX: .72, trunkX: .17, doorMin: 150, hoodY: .5 }, steer: { mat: 'black_base' } },
     credit: { title: '2025 Tesla Model Y', author: 'BloxBloger', url: 'https://sketchfab.com/3d-models/2025-tesla-model-y-619601e7800d418da5922c4fa7833f74', license: 'CC BY-NC 4.0', licenseUrl: 'https://creativecommons.org/licenses/by-nc/4.0/', nc: true },
   },
 };

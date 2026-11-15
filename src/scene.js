@@ -159,6 +159,7 @@ export class CarScene {
     lightMat('HeadLight', 0xfff4dc); lightMat('TailLight', 0xff2020); lightMat('RearLightBar', 0xff2a1a);
     this._handles(box, mats);
     this._applyInterior();
+    this._heatParts(box, mats);
     this._seatRims(mats);
     this._regions(box, mats);
     scene.add(car);
@@ -291,6 +292,68 @@ export class CarScene {
     });
   }
 
+  // Aquecimento: cada banco (fl/fr/rl/rr) e o volante passam a peças à parte, com material próprio, para poderem
+  // brilhar sozinhos. Bancos: material "Seats" (ou opts.seatName); volante: ilhas de opts.steer.mat dentro de opts.steer.box.
+  _heatParts(box, mats) {
+    const G = this.G, L = box.max.x - box.min.x, H = box.max.y - box.min.y, W = box.max.z - box.min.z, v = new THREE.Vector3();
+    G.heat = { seats: { fl: [], fr: [], rl: [], rr: [] }, steer: [] };
+    // ilhas de malha (vértices ligados) com frações por vértice e caixa de cada ilha
+    const islands = o => {
+      const g = o.geometry, pos = g.attributes.position, idx = g.index, n = pos.count;
+      const par = new Int32Array(n); for (let i = 0; i < n; i++) par[i] = i;
+      const find = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+      const join = (a, b) => { a = find(a); b = find(b); if (a !== b) par[a] = b; };
+      const seen = new Map(), F = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const k = pos.getX(i).toFixed(4) + ',' + pos.getY(i).toFixed(4) + ',' + pos.getZ(i).toFixed(4), j = seen.get(k); if (j === undefined) seen.set(k, i); else join(i, j);
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); F[i * 3] = (v.x - box.min.x) / L; F[i * 3 + 1] = (v.y - box.min.y) / H; F[i * 3 + 2] = (v.z - box.min.z) / W;
+      }
+      for (let i = 0; i < idx.count; i += 3) { join(idx.getX(i), idx.getX(i + 1)); join(idx.getX(i), idx.getX(i + 2)); }
+      const comp = new Map();
+      for (let i = 0; i < n; i++) { const r = find(i); let c = comp.get(r); if (!c) comp.set(r, c = { lo: [9, 9, 9], hi: [-9, -9, -9], t: 0 }); for (let j = 0; j < 3; j++) { c.lo[j] = Math.min(c.lo[j], F[i * 3 + j]); c.hi[j] = Math.max(c.hi[j], F[i * 3 + j]); } }
+      for (let i = 0; i < idx.count; i += 3) comp.get(find(idx.getX(i))).t++;
+      return { find, F, comp };
+    };
+    // tira os triângulos escolhidos de uma peça e cria uma peça nova por chave (mesmos vértices, material copiado)
+    const split = (o, pick) => {
+      const g = o.geometry, idx = g.index, out = {}, keep = [];
+      for (let i = 0; i < idx.count; i += 3) { const a = idx.getX(i), b = idx.getX(i + 1), c = idx.getX(i + 2), k = pick(a, b, c); if (k) (out[k] ||= []).push(a, b, c); else keep.push(a, b, c); }
+      const res = {}; if (!Object.keys(out).length) return res;
+      const ng0 = o.geometry = g.clone(); ng0.setIndex(keep);
+      for (const [k, arr] of Object.entries(out)) {
+        const ng = new THREE.BufferGeometry(); for (const [name, at] of Object.entries(ng0.attributes)) ng.setAttribute(name, at); ng.setIndex(arr);
+        const m = new THREE.Mesh(ng, o.material.clone()); m.position.copy(o.position); m.quaternion.copy(o.quaternion); m.scale.copy(o.scale);
+        m.castShadow = o.castShadow; m.receiveShadow = o.receiveShadow; o.parent.add(m); m.updateMatrixWorld(true); res[k] = m;
+      }
+      return res;
+    };
+    // bancos: frente/trás pela ilha (cada banco é um conjunto de ilhas), esquerda/direita por triângulo; o lugar do meio atrás não tem aquecimento próprio
+    const seatName = mats['Seats'] ? 'Seats' : (this.opts.seatName || 'Ln7Mtl'), cut = this.opts.seatSplit || .37;
+    for (const o of [...(mats[seatName] || [])]) {
+      if (!o.geometry.index) continue;
+      const { find, F, comp } = islands(o);
+      const parts = split(o, (a, b, c) => {
+        const cx = (F[a * 3] + F[b * 3] + F[c * 3]) / 3, cy = (F[a * 3 + 1] + F[b * 3 + 1] + F[c * 3 + 1]) / 3, cz = (F[a * 3 + 2] + F[b * 3 + 2] + F[c * 3 + 2]) / 3;
+        if (cx < .14 || cx > .84 || cy < .2) return null;   // fora do habitáculo (no Model 3 2024+ o mesmo material tem partes dos faróis)
+        const ib = comp.get(find(a)), front = (ib.lo[0] + ib.hi[0]) / 2 > cut, m = front ? .04 : .08;
+        return cz < .5 - m ? (front ? 'fl' : 'rl') : cz > .5 + m ? (front ? 'fr' : 'rr') : null;
+      });
+      for (const [k, m] of Object.entries(parts)) {
+        if (seatName === 'Seats') m.userData.seatMat = m.material;   // o interior branco/preto muda a cor neste material
+        G.heat.seats[k].push(m); mats[seatName].push(m);
+      }
+    }
+    // volante
+    const st = Object.assign({ mat: 'Georimblurlfsub01Mtl', box: [.55, .7, .45, .72, .22, .45], min: 50 }, this.opts.steer);
+    for (const o of [...(mats[st.mat] || [])]) {
+      if (!o.geometry.index) continue;
+      const { find, comp } = islands(o), bx = st.box;
+      const ok = new Set(); for (const [r, c] of comp) { const x = (c.lo[0] + c.hi[0]) / 2, y = (c.lo[1] + c.hi[1]) / 2, z = (c.lo[2] + c.hi[2]) / 2; if (c.t >= st.min && x > bx[0] && x < bx[1] && y > bx[2] && y < bx[3] && z > bx[4] && z < bx[5]) ok.add(r); }
+      const parts = split(o, a => ok.has(find(a)) ? 'steer' : null);
+      if (parts.steer) G.heat.steer.push(parts.steer);
+    }
+  }
+
   // No modelo a face de fora das jantes sai ~3 cm para lá do pneu (parece um tampão solto).
   // Empurra as jantes de cada roda para dentro até ficarem ao nível da parede do pneu.
   _seatRims(mats) {
@@ -412,7 +475,7 @@ export class CarScene {
     const G = this.G; if (!G.mats || !G.box) return;
     if (G.mats['Seats']) {   // modelos preparados com os bancos à parte: basta mudar a cor
       const white = this.state.interior !== 'black';
-      G.mats['Seats'].forEach(o => { if (!o.userData.seatMat) o.material = o.userData.seatMat = o.material.clone(); o.material.color.set(white ? 0xd8d5ce : 0x1b1b1d); o.material.roughness = white ? .55 : .5; });
+      G.mats['Seats'].forEach(o => { if (!o.userData.seatMat) o.material = o.userData.seatMat = o.material.clone(); o.material.color.set(white ? 0xd8d5ce : 0x1b1b1d); o.material.roughness = white ? .55 : .5; o.material.userData.heatBase = o.material.color.getHex(); o.material.userData.heatLit = true; });
       return;
     }
     const black = this.state.interior === 'black', box = G.box;
@@ -586,6 +649,16 @@ export class CarScene {
     const pulse = .5 - .5 * Math.cos(t * Math.PI * 2 / 1.6);
     const port = S.charging ? .5 + .5 * pulse : S.plugged ? .45 : 0;
     const col = S.charging ? 0x2bd673 : 0x3b82f6;
+    // aquecimento ligado: o banco (cada um) e o volante piscam a vermelho, inteiros, ao ritmo das peças abertas (1,2 s); o nível não conta
+    let heatOn = false;
+    if (G.heat) {
+      const hp = (.5 - .5 * Math.cos(t * Math.PI * 2 / 1.2)) * (S.dark ? .8 : .9), red = this._heatRed ||= new THREE.Color(1, .01, .01);
+      const paint = (m, on) => { const mt = m.material; if (typeof mt.userData.heatBase !== 'number') mt.userData.heatBase = mt.color.getHex();   // número: sobrevive às cópias do material
+        if (!on && !mt.userData.heatLit) return; mt.userData.heatLit = on;
+        mt.color.setHex(mt.userData.heatBase); if (on) mt.color.lerp(red, hp); mt.emissive.copy(red); mt.emissiveIntensity = on ? hp * 2.2 : 0; };
+      for (const [k, list] of Object.entries(G.heat.seats)) { const on = !!(S.seatHeat && S.seatHeat[k]); heatOn ||= on && list.length > 0; list.forEach(m => paint(m, on)); }
+      G.heat.steer.forEach(m => paint(m, !!S.steerHeat)); heatOn ||= !!S.steerHeat && G.heat.steer.length > 0;
+    }
     G.under.material.color.set(col);
     G.under.material.opacity = port * (S.dark ? .9 : .6);
     if (G.under.userData.dark !== S.dark) { G.under.userData.dark = S.dark; G.under.material.blending = S.dark ? THREE.CustomBlending : THREE.NormalBlending; G.under.material.premultipliedAlpha = S.dark; G.under.material.needsUpdate = true; }
@@ -596,7 +669,7 @@ export class CarScene {
     const flags = [0, op.frunk, 0 /* bagageira: só o ponto */, op.df, op.dr, op.pf, op.pr, tw.fl, tw.fr, tw.rl, tw.rr];
     let warnOn = false; for (let i = 0; i < flags.length; i++) { on.value[i] = flags[i] ? 1 : 0; warnOn ||= !!flags[i]; }
     this._regionPulse.value = warnOn ? (.5 - .5 * Math.cos(t * Math.PI * 2 / 1.2)) * (S.dark ? .8 : .9) : 0;
-    G.animating = head > 0 || tail > 0 || port > 0 || Math.abs(d) > .002 || want > 0 || !!fx.honk || warnOn || !!S.sentry;
+    G.animating = head > 0 || tail > 0 || port > 0 || Math.abs(d) > .002 || want > 0 || !!fx.honk || warnOn || heatOn || !!S.sentry;
     if (G.portDot) {
       const po = !!(S.open && S.open.port);
       G.portDot.material.opacity = po ? .35 + .65 * (.5 - .5 * Math.cos(t * Math.PI * 2 / 1.2)) : 0;
