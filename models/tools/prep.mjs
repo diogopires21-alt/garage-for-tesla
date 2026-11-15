@@ -5,6 +5,7 @@
 //  - comprime (meshopt) e tira o que não é usado
 // uso: node models/tools/prep.mjs <m3_classic|my_juniper> <entrada.glb> <saída.glb>
 // m3_classic: depois correr  node models/tools/drop.mjs <saída.glb> <saída.glb> --suporte BlackWash  (tira o suporte da matrícula)
+//             e por fim  node models/tools/m3classic-front.mjs <saída.glb> <saída.glb>  (grelha preta da frente)
 import { NodeIO, getBounds, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, KHRMaterialsTransmission } from '@gltf-transform/extensions';
 import { dedup, prune, meshopt, weld } from '@gltf-transform/functions';

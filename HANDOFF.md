@@ -30,6 +30,7 @@ Cartão personalizado para o Home Assistant, gratuito e público (repo no GitHub
 - Mais tarde: Model S, Model X, Cybertruck.
 - Os modelos novos são preparados com `models/tools/prep.mjs`: rodar (frente = +X, esquerda = −Z), nomes fixos de materiais (Paint, Glass, Tyre, Rim, HeadLight, TailLight, RearLightBar, Seats), separar faróis e bancos, comprimir (meshopt). Os originais estão em `models/src/`.
 - Matrícula: o Model 3 2017–2023 vinha com matrícula e suporte (frente e trás); foram tirados a 15/11/2026 com `models/tools/drop.mjs` (materiais White e LicensePlate* + ilhas do suporte em BlackWash com `--suporte BlackWash`). Num modelo novo com matrícula, usar o mesmo.
+- Frente do Model 3 2017–2023 (15/11/2026, aprovado): sem a matrícula ficavam à vista 5 separadores verticais brancos e 4 parafusos. Agora a entrada de ar é como no carro real: separadores e parafusos tirados, paredes de dentro a preto e uma grelha nova de 9 riscas horizontais pretas (material `Grille`) que segue a curva do para-choques; o degrau por baixo da grelha fica na cor do carro. Feito com `models/tools/m3classic-front.mjs` (correr depois do `drop.mjs`).
 - Cada modelo tem afinações próprias em `MODELS[...].scene` (zonas das portas e capô) em `src/slots.js`.
 
 ## Cores (só as que existiram de fábrica)
