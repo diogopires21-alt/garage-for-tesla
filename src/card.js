@@ -4,7 +4,7 @@ import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
 
-export const VERSION = '0.1.0';
+export const VERSION = '1.0.0';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -241,7 +241,7 @@ class GarageForTeslaCard extends HTMLElement {
     const al = [];
     const doors = { df: 'seat_fl', pf: 'seat_fr', dr: 'seat_rl', pr: 'seat_rr' };
     let openDoors = 0; for (const k of Object.keys(doors)) { const s = this._ok('door_' + k); if (s && s.state === 'on') openDoors++; }
-    if (openDoors) al.push(`<span class="alert"><ha-icon icon="mdi:car-door"></ha-icon>${openDoors} ${esc(this._t('door_open'))}</span>`);
+    if (openDoors) al.push(`<span class="alert"><ha-icon icon="mdi:car-door"></ha-icon>${openDoors} ${esc(this._t(openDoors > 1 ? 'doors_open' : 'door_open'))}</span>`);
     for (const k of ['fl', 'fr', 'rl', 'rr']) { const s = this._ok('tpms_warn_' + k); if (s && s.state === 'on') { al.push(`<span class="alert"><ha-icon icon="mdi:car-tire-alert"></ha-icon>${esc(this._t('tyres'))}</span>`); break; } }
     const up = this._ok('update'); if (up && up.state === 'on') al.push(`<span class="alert info"><ha-icon icon="mdi:update"></ha-icon>${esc(this._t('update'))}</span>`);
     $.alerts.innerHTML = al.join('');

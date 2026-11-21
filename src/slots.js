@@ -81,7 +81,7 @@ export const MODELS = {
     name: 'Model 3 (2017–2023)', file: 'garage-for-tesla-model3-classic.glb', paint: 'Paint', length: 4.694,
     colors: ['pearl_white', 'midnight_silver', 'silver_metallic', 'solid_black', 'deep_blue', 'red_multicoat'],
     // zonas medidas no modelo (frações do comprimento, 0 = traseira): portas [fim de trás, pilar B, frente], capô a partir de frunkX
-    scene: { trimName: null, regions: { door: [.21, .46, .72], frunkX: .72, trunkX: .17 }, steer: { mat: 'GlossyInterior' } },
+    scene: { trimName: null, regions: { door: [.21, .46, .72], frunkX: .72, trunkX: .17, doorSplit: 'mesh' }, steer: { mat: 'GlossyInterior' } },
     credit: { title: 'Tesla M3 model', author: 'wintrez', url: 'https://sketchfab.com/3d-models/tesla-m3-model-3a602469d7874d1397efa67182198705', license: 'CC BY 4.0', licenseUrl: 'https://creativecommons.org/licenses/by/4.0/' },
   },
   modely_juniper: {

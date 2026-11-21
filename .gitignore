@@ -4,3 +4,4 @@ test/harness.bundle.js
 ref/
 node_modules
 models/tools/*.bundle.js
+HANDOFF.md

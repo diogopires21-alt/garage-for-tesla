@@ -437,9 +437,17 @@ export class CarScene {
         }
         else kind.set(r, '');
       }
+      let sx = null;   // doorSplit 'mesh': as duas portas vêm coladas na mesma ilha, mas cada uma é uma peça própria na malha; divide pela peça e não por uma linha reta no pilar
+      if (R.doorSplit === 'mesh' && idx) {
+        const q = new Int32Array(n); for (let i = 0; i < n; i++) q[i] = i;
+        const f2 = i => { while (q[i] !== i) { q[i] = q[q[i]]; i = q[i]; } return i; };
+        for (let i = 0; i < idx.count; i += 3) { const a = f2(idx.getX(i)), b = f2(idx.getX(i + 1)), c = f2(idx.getX(i + 2)); if (a !== b) q[a] = b; const b2 = f2(b), c2 = f2(c); if (b2 !== c2) q[b2] = c2; }
+        const acc = new Map(); for (let i = 0; i < n; i++) { const r = f2(i); const a = acc.get(r) || acc.set(r, [0, 0]).get(r); a[0] += F[i * 3]; a[1]++; }
+        sx = new Float32Array(n); for (let i = 0; i < n; i++) { const a = acc.get(f2(i)); sx[i] = a[0] / a[1]; }
+      }
       const out = new Float32Array(n);
       for (let i = 0; i < n; i++) {
-        const fx = F[i * 3], fy = F[i * 3 + 1], fz = F[i * 3 + 2], k = kind.get(find(i));
+        const fx = sx ? sx[i] : F[i * 3], k = kind.get(find(i));
         out[i] = k === 'frunk' ? 1 : k === 'frontL' ? 3 : k === 'rearL' ? 4 : k === 'frontR' ? 5 : k === 'rearR' ? 6 : k === 'doorL' ? (fx > R.door[1] ? 3 : 4) : k === 'doorR' ? (fx > R.door[1] ? 5 : 6) : 0;
       }
       g.setAttribute('aRegion', new THREE.BufferAttribute(out, 1));

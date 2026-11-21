@@ -34,7 +34,7 @@ If something isn't detected, you can point the card to the right entity with `en
 **Home Assistant 2026.11 or newer (Marketplace)**
 
 1. Settings → Marketplace → **Add from link**
-2. Paste `https://github.com/<your-user>/garage-for-tesla` and install **Garage for Tesla**.
+2. Paste `https://github.com/diogopires21-alt/garage-for-tesla` and install **Garage for Tesla**.
 3. Reload the browser when asked.
 
 **Older versions (HACS)**: HACS → ⋮ → Custom repositories → add the link above as *Dashboard*.
@@ -96,5 +96,5 @@ Other:
 ## Roadmap
 
 - More 3D models (Model Y 2020–2024, Model S, Model X, Cybertruck) so you can pick yours.
-- Open doors/windows shown on the 3D model.
+- Open windows shown on the 3D model.
 - Map card with the car's location.
