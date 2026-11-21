@@ -4,7 +4,7 @@ import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.0.1';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -63,8 +63,8 @@ class GarageForTeslaCard extends HTMLElement {
   }
   get hass() { return this._hass; }
 
-  connectedCallback() { if (this._scene) this._scene.start(); }
-  disconnectedCallback() { if (this._scene) this._scene.stop(); }
+  connectedCallback() { if (this._scene) this._scene.start(); if (this._onWin) { addEventListener('resize', this._onWin); if (window.visualViewport) visualViewport.addEventListener('resize', this._onWin); this._layout(); } }
+  disconnectedCallback() { if (this._scene) this._scene.stop(); if (this._onWin) { removeEventListener('resize', this._onWin); if (window.visualViewport) visualViewport.removeEventListener('resize', this._onWin); } }
 
   // ---------- estrutura ----------
   _build() {
@@ -107,6 +107,7 @@ class GarageForTeslaCard extends HTMLElement {
     this._initScene();
     this._ro = new ResizeObserver(() => this._layout());
     this._ro.observe(this.$.root);
+    this._onWin = () => this._layout();
   }
 
   // outro modelo escolhido no editor: nova cena num canvas novo (o contexto WebGL antigo fica livre)
@@ -137,7 +138,17 @@ class GarageForTeslaCard extends HTMLElement {
     const narrow = w > 0 && w < 860;
     r.classList.toggle('narrow', narrow); if (!narrow) r.classList.remove('menu-open');
     if (this._config && this._config.height) r.style.setProperty('--gft-h', this._config.height);
+    else if (narrow) r.style.setProperty('--gft-fit', this._fitHeight() || '');
     if (this._scene) { const hd = this.shadowRoot.querySelector('.hdr'); this._scene.setInsets(this.$.foot.offsetHeight + 8, narrow ? hd.offsetHeight + 40 : 0, narrow, narrow ? 0 : this.$.menu.offsetWidth + 16); }
+  }
+
+  // telemóvel: altura = espaço que se vê mesmo (no iPhone a barra de estado e a barra do gesto de baixo ficam por cima da página)
+  _fitHeight() {
+    const vh = (window.visualViewport && visualViewport.height) || innerHeight, top = this.$.root.getBoundingClientRect().top + (scrollY || 0);
+    if (!(top >= 0 && top < vh * .5)) return null;
+    if (!this._safe) { this._safe = document.createElement('div'); this._safe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none'; document.body.appendChild(this._safe); }
+    const h = Math.floor(vh - top - this._safe.offsetHeight - 8);
+    return h >= 480 ? h + 'px' : null;
   }
 
   // ---------- dados ----------
@@ -295,8 +306,7 @@ class GarageForTeslaCard extends HTMLElement {
       const b = el.querySelector('b'), sm = el.querySelector('small');
       if (ci.charging) {
         b.textContent = (ci.power != null ? this._fmt(ci.power, ci.power < 10 ? 1 : 0) + ' ' + ci.powerU : this._t('charging_s'));
-        const rate = this._num('charge_rate');
-        sm.textContent = [rate != null ? '+' + this._fmt(rate) + ' ' + this._unit('charge_rate') : '', ci.mins != null ? this._dur(ci.mins) : ''].filter(Boolean).join(' · ');
+        sm.textContent = '';   // só a potência: o tempo que falta já está no cabeçalho
       } else if (ci.plugged) { b.textContent = this._t(ci.complete ? 'complete' : 'plugged'); sm.textContent = this._t('charge_port'); }
       else { const p = this._ok('charge_port'); b.textContent = this._t('charge_port'); sm.textContent = p && p.state === 'open' ? this._t('open') : this._t('s_open'); }
     } });

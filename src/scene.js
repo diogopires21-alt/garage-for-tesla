@@ -571,7 +571,13 @@ export class CarScene {
   setCarState(s) { Object.assign(this.state, s); }
   fx(name) { this.G.fx[name] = performance.now(); }
 
-  setInsets(bottom, top, narrow, right) { this.bottomInset = bottom || 0; this.topInset = top || 0; this.narrow = !!narrow; this.rightInset = right || 0; this.resize(); }
+  setInsets(bottom, top, narrow, right) {
+    this.bottomInset = bottom || 0; this.topInset = top || 0; this.narrow = !!narrow; this.rightInset = right || 0;
+    // telemóvel: dedo para os lados roda o carro, para cima/baixo faz scroll da página (e o carro não inclina)
+    this.canvas.style.touchAction = this.narrow ? 'pan-y' : 'none';
+    const c = this.controls; if (c) { const pa = Math.acos(this.HOME.dir.y); c.minPolarAngle = this.narrow ? pa : 0.55; c.maxPolarAngle = this.narrow ? pa : 1.48; }
+    this.resize();
+  }
   resize() {
     if (!this.renderer) return;
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight; if (!w || !h) return;

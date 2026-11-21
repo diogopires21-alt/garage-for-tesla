@@ -55,6 +55,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-acti
 .tag .pill .t{display:flex;flex-direction:column;line-height:1.15;text-align:left}
 .tag .pill b{font-size:13px;font-weight:600}
 .tag .pill small{font-size:12px;color:var(--fg2)}
+.tag .pill small:empty{display:none}
 .tag.round .pill{padding:0;width:46px;height:46px;min-height:0;border-radius:50%;justify-content:center}
 .tag.round .pill ha-icon{--mdc-icon-size:22px}
 .tag.on .pill ha-icon{color:var(--green)}
@@ -176,7 +177,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-acti
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
 /* ecrãs estreitos: menu por baixo */
-.root.narrow{--menu-w:0px;grid-template-columns:1fr;grid-template-rows:1fr;height:var(--gft-h,calc(100dvh - var(--header-height,56px)));min-height:540px}
+.root.narrow{--menu-w:0px;grid-template-columns:1fr;grid-template-rows:1fr;height:var(--gft-h,var(--gft-fit,calc(100dvh - var(--header-height,56px))));min-height:480px}
 .root.narrow .stage{height:auto}
 /* telemóvel: o menu passa a uma folha que sobe de baixo, aberta pelo botão "Controlos" */
 .root.narrow .menu{position:absolute;left:8px;right:8px;bottom:8px;width:auto;margin:0;height:min(80%,640px);z-index:4;border-radius:28px;

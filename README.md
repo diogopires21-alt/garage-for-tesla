@@ -9,7 +9,7 @@ A 3D dashboard card for Home Assistant that puts your Tesla front and centre: a 
 ## What you get
 
 - **3D car** you can rotate, with a reflective glass floor and a background that matches your paint colour.
-- **Information on the car itself**: lock state on the roof, frunk and trunk at each end, charging power and time left at the charge port, tyre pressures on a top-down view, battery and range in the header.
+- **Information on the car itself**: lock state on the roof, frunk and trunk at each end, charging power at the charge port, tyre pressures on a top-down view, battery and range in the header.
 - **Live effects on the 3D car**: charging light under the car, Sentry Mode scan, open doors/frunk and low tyres blinking orange, heated seats and heated steering wheel blinking red.
 - **Controls menu on the right**, grouped like iOS Settings: security, climate, charging, doors & windows, quick actions. You choose which ones appear.
 - **Shortcut row** under the car (lights, horn, climate, windows, frunk… you pick).
