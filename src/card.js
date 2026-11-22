@@ -4,7 +4,7 @@ import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
 
-export const VERSION = '1.1.1';
+export const VERSION = '1.1.2';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -475,7 +475,7 @@ class GarageForTeslaCard extends HTMLElement {
       switch (S.d) {
         case 'lock': { const locked = s && s.state === 'locked'; this._call('lock', locked ? 'unlock' : 'lock', { entity_id: id }, k); this._scene && this._scene.fx('lock'); break; }
         case 'switch': this._call('switch', s && s.state === 'on' ? 'turn_off' : 'turn_on', { entity_id: id }, k); break;
-        case 'climate': this._call('climate', s && s.state !== 'off' ? 'turn_off' : 'turn_on', { entity_id: id }, k); break;
+        case 'climate': this._climate(s, id, k); break;
         case 'cover': this._call('cover', s && s.state === 'open' ? 'close_cover' : 'open_cover', { entity_id: id }, k); break;
         case 'button': this._call('button', 'press', { entity_id: id }, k);
           if (k === 'flash') this._scene && this._scene.fx('flash'); if (k === 'honk') this._scene && this._scene.fx('honk'); break;
@@ -489,6 +489,15 @@ class GarageForTeslaCard extends HTMLElement {
     else if (k === 'valet') ask = { t: 'c_valet', m: '', v: 'v_ok', i: S.icon };
     else if (k === 'keyless') ask = { t: 'c_keyless', m: '', v: 'v_enable', i: S.icon };
     if (ask && this._config.confirm !== false) this._confirm(ask, run); else run();
+  }
+  // liga/desliga o AC: turn_on/turn_off quando a entidade os aceita (Tessie, Teslemetry, Tesla Fleet);
+  // senão set_hvac_mode, o único que a Tesla Custom Integration aceita (issue #1)
+  _climate(s, id, k) {
+    const on = !!s && s.state !== 'off', a = (s && s.attributes) || {}, f = +a.supported_features || 0;
+    if (f & (on ? 256 : 128)) { this._call('climate', on ? 'turn_off' : 'turn_on', { entity_id: id }, k); return; } // 128 = TURN_ON, 256 = TURN_OFF
+    const modes = a.hvac_modes || [];
+    const mode = on ? 'off' : (['heat_cool', 'auto', 'cool', 'heat'].find(m => modes.includes(m)) || modes.find(m => m !== 'off') || 'heat_cool');
+    this._call('climate', 'set_hvac_mode', { entity_id: id, hvac_mode: mode }, k);
   }
   async _call(domain, service, data, key) {
     if (key) { this._busy.add(key); this._render(); }

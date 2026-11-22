@@ -64,7 +64,10 @@ const E = [
   ['lock.' + P + 'fechadura', 'vehicle_state_locked', q.get('lock') || 'locked', {}],
   ['switch.' + P + 'modo_sentinela', 'vehicle_state_sentry_mode', 'on', {}],
   ['switch.' + P + 'modo_valet', 'vehicle_state_valet_mode', 'off', {}],
-  ['climate.' + P + 'climatizacao', 'primary', q.get('clim') || 'off', { temperature: 21, min_temp: 15, max_temp: 28, target_temp_step: .5, current_temperature: 19.5 }],
+  // ?integ=custom imita a Tesla Custom Integration: sem TURN_ON/TURN_OFF, só set_hvac_mode (issue #1); por omissão imita o Tessie
+  q.get('integ') === 'custom'
+    ? ['climate.' + P + 'hvac_climate_system', 'primary', q.get('clim') || 'off', { hvac_modes: ['heat_cool', 'off'], supported_features: 25, temperature: 21, min_temp: 15, max_temp: 28, target_temp_step: .5, current_temperature: 19.5 }]
+    : ['climate.' + P + 'climatizacao', 'primary', q.get('clim') || 'off', { hvac_modes: ['heat_cool', 'off'], supported_features: 401, temperature: 21, min_temp: 15, max_temp: 28, target_temp_step: .5, current_temperature: 19.5 }],
   ['switch.' + P + 'modo_de_descongelacao', 'climate_state_defrost_mode', 'off', {}],
   ['switch.' + P + 'aquecedor_do_volante', 'climate_state_steering_wheel_heater', q.get('wheel') ? 'on' : 'off', {}],
   ['select.' + P + 'aquecedor_do_assento_esquerdo', 'climate_state_seat_heater_left', q.get('sfl') || 'low', { options: ['off', 'low', 'medium', 'high'] }],
@@ -105,7 +108,12 @@ function push() {
       if (d === 'lock') set(s === 'lock' ? 'locked' : 'unlocked');
       if (d === 'switch') set(s === 'turn_on' ? 'on' : 'off');
       if (d === 'cover') set(s === 'open_cover' ? 'open' : 'closed');
-      if (d === 'climate') { if (s === 'set_temperature') states[id] = { ...cur, attributes: { ...cur.attributes, temperature: data.temperature } }; else set(s === 'turn_on' ? 'heat_cool' : 'off'); }
+      if (d === 'climate') {
+        const f = cur.attributes.supported_features || 0; // recusa como o HA quando a entidade não aceita o comando
+        if ((s === 'turn_on' && !(f & 128)) || (s === 'turn_off' && !(f & 256))) throw new Error(`Entity ${id} does not support action climate.${s}`);
+        if (s === 'set_temperature') states[id] = { ...cur, attributes: { ...cur.attributes, temperature: data.temperature } };
+        else if (s === 'set_hvac_mode') set(data.hvac_mode); else set(s === 'turn_on' ? 'heat_cool' : 'off');
+      }
       if (d === 'select') set(data.option);
       if (d === 'number') set(String(data.value));
       push();
@@ -131,7 +139,8 @@ if (demo) {
     <label><input type="checkbox" id="dChg"> A carregar</label>
     <label><input type="checkbox" id="dTw"> Aviso de pneu</label>
     <label><input type="checkbox" id="dDoor"> Porta aberta</label>
-    <label><input type="checkbox" id="dMob"> Telemóvel</label>`;
+    <label><input type="checkbox" id="dMob"> Telemóvel</label>
+    <label>Integração <select id="dIntg"><option value="tessie">Tessie / Teslemetry / Fleet</option><option value="custom">Tesla Custom</option></select></label>`;
   const app = document.getElementById('app');
   const apply = () => {
     card.setConfig({ car_model: C.model, color: C.color, interior: C.interior, theme: C.theme, ...extra });
@@ -142,6 +151,8 @@ if (demo) {
     states['binary_sensor.' + P + 'aviso_de_pressao_do_pneu_traseiro_esquerdo'] = { ...states['binary_sensor.' + P + 'aviso_de_pressao_do_pneu_traseiro_esquerdo'], state: C.tw ? 'on' : 'off' };
     states['sensor.' + P + 'pressao_do_pneu_traseiro_esquerdo'] = { ...states['sensor.' + P + 'pressao_do_pneu_traseiro_esquerdo'], state: C.tw ? '2.4' : '2.9' };
     states['binary_sensor.' + P + 'porta_da_frente_do_condutor'] = { ...states['binary_sensor.' + P + 'porta_da_frente_do_condutor'], state: C.door ? 'on' : 'off' };
+    const cid = Object.keys(states).find(k => k.startsWith('climate.')); // Tesla Custom: sem TURN_ON/TURN_OFF (issue #1)
+    states[cid] = { ...states[cid], attributes: { ...states[cid].attributes, supported_features: C.intg === 'custom' ? 25 : 401 } };
     app.classList.toggle('mobile', C.mobile);
     document.body.classList.toggle('light', C.theme === 'light');
     push();
@@ -159,5 +170,6 @@ if (demo) {
   demo.querySelector('#dTw').onchange = e => { C.tw = e.target.checked; apply(); };
   demo.querySelector('#dDoor').onchange = e => { C.door = e.target.checked; apply(); };
   demo.querySelector('#dMob').onchange = e => { C.mobile = e.target.checked; apply(); };
+  demo.querySelector('#dIntg').onchange = e => { C.intg = e.target.value; apply(); };
   apply();
 }
