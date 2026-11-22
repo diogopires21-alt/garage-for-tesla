@@ -4,7 +4,7 @@ import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
 
-export const VERSION = '1.1.0';
+export const VERSION = '1.1.1';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -63,8 +63,8 @@ class GarageForTeslaCard extends HTMLElement {
   }
   get hass() { return this._hass; }
 
-  connectedCallback() { if (this._scene) this._scene.start(); if (this._onWin) { addEventListener('resize', this._onWin); if (window.visualViewport) visualViewport.addEventListener('resize', this._onWin); this._layout(); } }
-  disconnectedCallback() { if (this._scene) this._scene.stop(); if (this._onWin) { removeEventListener('resize', this._onWin); if (window.visualViewport) visualViewport.removeEventListener('resize', this._onWin); } }
+  connectedCallback() { clearInterval(this._tick); this._tick = setInterval(() => { if (this._built && this._hass && this._config) this._render(); }, 60000); if (this._scene) this._scene.start(); if (this._onWin) { addEventListener('resize', this._onWin); if (window.visualViewport) visualViewport.addEventListener('resize', this._onWin); this._layout(); } }
+  disconnectedCallback() { clearInterval(this._tick); if (this._scene) this._scene.stop(); if (this._onWin) { removeEventListener('resize', this._onWin); if (window.visualViewport) visualViewport.removeEventListener('resize', this._onWin); } }
 
   // ---------- estrutura ----------
   _build() {
@@ -217,9 +217,19 @@ class GarageForTeslaCard extends HTMLElement {
     const charging = st === 'charging' || st === 'starting';
     const cable = this._ok('cable');
     const plugged = charging || (cable ? cable.state === 'on' : !!(st && st !== 'disconnected'));
-    let mins = this._num('time_to_full'); const u = this._unit('time_to_full');
-    if (mins != null && /^h/.test(u)) mins *= 60;
+    const mins = this._minsToFull();
     return { st, charging, plugged, complete: st === 'complete', mins, power: this._num('charge_power'), powerU: this._unit('charge_power') || 'kW' };
+  }
+  // Tessie/Teslemetry/Tesla Fleet dão a HORA de fim (data); outras integrações dão minutos ou horas.
+  _minsToFull() {
+    const s = this._ok('time_to_full'); if (!s) return null;
+    const v = String(s.state).trim();
+    if (s.attributes.device_class === 'timestamp' || /^\d{4}-\d{2}-\d{2}[T ]/.test(v)) {
+      const t = Date.parse(v); return isNaN(t) ? null : Math.max(0, (t - Date.now()) / 60000);
+    }
+    let m = parseFloat(v); if (isNaN(m)) return null;
+    if (/^h/.test(this._unit('time_to_full'))) m *= 60;
+    return m;
   }
   _dur(m) { if (m == null) return ''; m = Math.round(m); const hh = Math.floor(m / 60), mm = m % 60; return hh ? `${hh} h ${String(mm).padStart(2, '0')} min` : `${mm} min`; }
 

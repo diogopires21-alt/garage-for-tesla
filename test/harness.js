@@ -39,7 +39,10 @@ const E = [
   ['sensor.' + P + 'a_carregar', 'charge_state_charging_state', q.get('chg') || 'disconnected', {}],
   ['sensor.' + P + 'potencia_do_carregador', 'charge_state_charger_power', '10.8', { unit_of_measurement: 'kW' }],
   ['sensor.' + P + 'taxa_de_carregamento', 'charge_state_charge_rate', '62', { unit_of_measurement: 'km/h' }],
-  ['sensor.' + P + 'tempo_ate_a_carga_completa', 'charge_state_minutes_to_full_charge', '85', { unit_of_measurement: 'min' }],
+  // como o Tessie/Teslemetry/Tesla Fleet: hora de fim (timestamp); ?ttf=min → formato antigo em minutos
+  q.get('ttf') === 'min'
+    ? ['sensor.' + P + 'tempo_ate_a_carga_completa', 'charge_state_minutes_to_full_charge', '85', { unit_of_measurement: 'min' }]
+    : ['sensor.' + P + 'tempo_ate_a_carga_completa', 'charge_state_minutes_to_full_charge', new Date(Date.now() + 59 * 60000 + 30000).toISOString().replace(/\.\d+Z$/, '+00:00'), { device_class: 'timestamp' }],
   ['binary_sensor.' + P + 'cabo_de_carregamento', 'charge_state_conn_charge_cable', q.get('chg') && q.get('chg') !== 'disconnected' ? 'on' : 'off', {}],
   ['sensor.' + P + 'odometro', 'vehicle_state_odometer', '23418', { unit_of_measurement: 'km' }],
   ['sensor.' + P + 'temperatura_interior', 'climate_state_inside_temp', '19.5', { unit_of_measurement: '°C' }],
