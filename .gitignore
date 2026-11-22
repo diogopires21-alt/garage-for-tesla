@@ -5,3 +5,5 @@ ref/
 node_modules
 models/tools/*.bundle.js
 HANDOFF.md
+# original do Model Y 2020–2024 (85 MB): fica fora do GitHub, só vai a versão preparada (src/modely_classic.glb)
+models/src/my_classic.glb

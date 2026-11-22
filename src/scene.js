@@ -406,6 +406,10 @@ export class CarScene {
     // e classifica cada ilha inteira (fica com contornos limpos, sem dentes)
     (mats[this.opts.paintName || 'Paint'] || []).forEach(o => {
       const g = o.geometry, pos = g.attributes.position, idx = g.index, n = pos.count;
+      if (/^HoodPatch/.test(o.name)) {   // remendo do capô (models/tools/hood-patch.mjs): é capô inteiro
+        g.setAttribute('aRegion', new THREE.BufferAttribute(new Float32Array(n).fill(1), 1)); g.setAttribute('aTrunk', new THREE.BufferAttribute(new Float32Array(n), 1));
+        this._patchRegion(o.material); return;
+      }
       const par = new Int32Array(n); for (let i = 0; i < n; i++) par[i] = i;
       const find = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
       const join = (x, y) => { x = find(x); y = find(y); if (x !== y) par[x] = y; };
@@ -425,6 +429,7 @@ export class CarScene {
       for (const [r, c] of comp) {
         const cx = c.x / c.n, cy = c.y / c.n, cz = c.z / c.n;
         if (c.n > n * .4) kind.set(r, 'body');
+        else if (R.frunkBox && cx > R.frunkBox[0] && cx < R.frunkBox[1] && cy > R.frunkBox[2] && cy < R.frunkBox[3] && cz > R.frunkBox[4] && cz < R.frunkBox[5]) kind.set(r, 'frunk');   // frunkBox: modelos com o capô partido em pedaços soltos
         // dobradiças e fechos das portas (peças pequenas nos pilares): no modelo espreitam pelas frestas e parecem riscos pretos
         else if (c.n < 300 && cy < .62 && (Math.abs(cx - R.door[1]) < .025 || Math.abs(cx - R.door[2]) < .025)) kind.set(r, 'latch');
         // reforços por baixo do capô: espreitam pela chapa e parecem riscos/"XX"
@@ -448,6 +453,8 @@ export class CarScene {
       const out = new Float32Array(n);
       for (let i = 0; i < n; i++) {
         const fx = sx ? sx[i] : F[i * 3], k = kind.get(find(i));
+        const vb = R.frunkVtxBox;   // pedaços do capô colados à carroçaria (modelos com a chapa partida): decide vértice a vértice
+        if (vb && (k === 'body' || k === '') && F[i * 3] > vb[0] && F[i * 3] < vb[1] && F[i * 3 + 1] > vb[2] && F[i * 3 + 1] < vb[3] && F[i * 3 + 2] > vb[4] && F[i * 3 + 2] < vb[5]) { out[i] = 1; continue; }
         out[i] = k === 'frunk' ? 1 : k === 'frontL' ? 3 : k === 'rearL' ? 4 : k === 'frontR' ? 5 : k === 'rearR' ? 6 : k === 'doorL' ? (fx > R.door[1] ? 3 : 4) : k === 'doorR' ? (fx > R.door[1] ? 5 : 6) : 0;
       }
       g.setAttribute('aRegion', new THREE.BufferAttribute(out, 1));
@@ -573,9 +580,9 @@ export class CarScene {
 
   setInsets(bottom, top, narrow, right) {
     this.bottomInset = bottom || 0; this.topInset = top || 0; this.narrow = !!narrow; this.rightInset = right || 0;
-    // telemóvel: dedo para os lados roda o carro, para cima/baixo faz scroll da página (e o carro não inclina)
-    this.canvas.style.touchAction = this.narrow ? 'pan-y' : 'none';
-    const c = this.controls; if (c) { const pa = Math.acos(this.HOME.dir.y); c.minPolarAngle = this.narrow ? pa : 0.55; c.maxPolarAngle = this.narrow ? pa : 1.48; }
+    // o dedo roda e inclina o carro também no telemóvel (o cartão cabe no ecrã, já não é preciso o scroll vertical por cima do carro — pedido do Diogo, 21/11/2026)
+    this.canvas.style.touchAction = 'none';
+    const c = this.controls; if (c) { c.minPolarAngle = 0.55; c.maxPolarAngle = 1.48; }
     this.resize();
   }
   resize() {

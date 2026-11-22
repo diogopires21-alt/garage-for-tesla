@@ -58,7 +58,7 @@ All options:
 type: custom:garage-for-tesla-card
 device_id: 0123456789abcdef          # optional, first Tesla car found if empty
 name: K.I.T.T.                       # optional, defaults to the device name
-car_model: model3_highland           # model3_highland, model3_classic, modely_juniper
+car_model: model3_highland           # model3_highland, model3_classic, modely_juniper, modely_classic
 color: pearl_white                   # only colours that exist for the chosen model (see below)
 interior: white                      # white or black
 theme: auto                          # auto (follow HA), light, dark
@@ -77,6 +77,7 @@ Models and colours (only real factory colours for each one):
 | `model3_highland` | Model 3 (2024+) | `pearl_white`, `stealth_grey`, `quicksilver`, `diamond_black`, `solid_black`, `ultra_red`, `deep_blue`, `marine_blue` |
 | `model3_classic` | Model 3 (2017–2023) | `pearl_white`, `midnight_silver`, `silver_metallic`, `solid_black`, `deep_blue`, `red_multicoat` |
 | `modely_juniper` | Model Y (2025+) | `pearl_white`, `stealth_grey`, `quicksilver`, `diamond_black`, `solid_black`, `ultra_red`, `glacier_blue`, `deep_blue`, `marine_blue`, `frost_blue`, `coastal_blue` |
+| `modely_classic` | Model Y (2020–2024) | `pearl_white`, `midnight_silver`, `stealth_grey`, `quicksilver`, `solid_black`, `deep_blue`, `red_multicoat`, `ultra_red`, `midnight_cherry` |
 
 Control keys: `lock, sentry, valet, climate, defrost, steering_heat, steering_level, seat_fl, seat_fr, seat_rl, seat_rr, charge, charge_port, charge_limit, charge_amps, frunk, trunk, windows, flash, honk, wake, homelink, boombox, keyless`.
 
@@ -87,6 +88,7 @@ Control keys: `lock, sentry, valet, climate, defrost, steering_heat, steering_le
 - Model 3 (2024+): ["2024 Tesla Model 3"](https://sketchfab.com/3d-models/2024-tesla-model-3-fd22be415215453693d67e33aa7812d0) by **RBLXSupercars**, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - Model 3 (2017–2023): ["Tesla M3 model"](https://sketchfab.com/3d-models/tesla-m3-model-3a602469d7874d1397efa67182198705) by **wintrez**, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - Model Y (2025+): ["2025 Tesla Model Y"](https://sketchfab.com/3d-models/2025-tesla-model-y-619601e7800d418da5922c4fa7833f74) by **BloxBloger**, [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). **Non-commercial use only**: you can use it freely at home, but not in anything sold or used commercially.
+- Model Y (2020–2024): ["Tesla Model Y 2021"](https://sketchfab.com/3d-models/tesla-model-y-2021-c0a86cac582d4b33aba0fb1b1912d970) by **763468712**, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Modified: paint holes and inward-facing panels fixed, glass made see-through, a centre screen added, and the mesh simplified.
 
 Other:
 
@@ -95,6 +97,6 @@ Other:
 
 ## Roadmap
 
-- More 3D models (Model Y 2020–2024, Model S, Model X, Cybertruck) so you can pick yours.
+- More 3D models (Model S, Model X, Cybertruck) so you can pick yours.
 - Open windows shown on the 3D model.
 - Map card with the car's location.

@@ -88,8 +88,15 @@ export const MODELS = {
     name: 'Model Y (2025+)', file: 'garage-for-tesla-modely-juniper.glb', paint: 'Paint', length: 4.797,
     colors: ['pearl_white', 'stealth_grey', 'quicksilver', 'diamond_black', 'solid_black', 'ultra_red', 'glacier_blue', 'deep_blue', 'marine_blue', 'frost_blue', 'coastal_blue'],
     // no Model Y a carroçaria vem em muitas peças pequenas (portas ~250 vértices); o capô escolhe-se acima de meia altura (o para-choques é maior)
-    scene: { trimName: null, regions: { door: [.22, .45, .72], frunkX: .72, trunkX: .17, doorMin: 150, hoodY: .5 }, steer: { mat: 'black_base' } },
+    scene: { trimName: null, regions: { door: [.22, .45, .72], frunkX: .72, trunkX: .17, doorMin: 150, hoodY: .5 }, steer: { mat: 'black_base' }, seatSplit: .41 },   // assento de trás chega a .38: com o corte normal (.37) aquecia com os da frente
     credit: { title: '2025 Tesla Model Y', author: 'BloxBloger', url: 'https://sketchfab.com/3d-models/2025-tesla-model-y-619601e7800d418da5922c4fa7833f74', license: 'CC BY-NC 4.0', licenseUrl: 'https://creativecommons.org/licenses/by-nc/4.0/', nc: true },
+  },
+  modely_classic: {
+    name: 'Model Y (2020–2024)', file: 'garage-for-tesla-modely-classic.glb', paint: 'Paint', length: 4.751,
+    // Midnight Cherry Red e Quicksilver: só os feitos em Berlim (Europa); Stealth Grey e Ultra Red: a partir de 2023/24
+    colors: ['pearl_white', 'midnight_silver', 'stealth_grey', 'quicksilver', 'solid_black', 'deep_blue', 'red_multicoat', 'ultra_red', 'midnight_cherry'],
+    scene: { trimName: null, regions: { door: [.22, .45, .72], frunkX: .72, trunkX: .17, doorMin: 150, hoodY: .5, frunkBox: [.76, .97, .58, 1, .15, .85] }, steer: { mat: 'interior' }, seatSplit: .41 },   // idem Juniper
+    credit: { title: 'Tesla Model Y 2021', author: '763468712', url: 'https://sketchfab.com/3d-models/tesla-model-y-2021-c0a86cac582d4b33aba0fb1b1912d970', license: 'CC BY 4.0', licenseUrl: 'https://creativecommons.org/licenses/by/4.0/' },
   },
 };
 export const DEFAULT_MODEL = 'model3_highland';
@@ -104,6 +111,7 @@ export const COLORS = {
   ultra_red:     { hex: '#a3121c', m: .35, r: .2, vivid: true },
   red_multicoat: { hex: '#8c0f17', m: .35, r: .2, vivid: true },
   midnight_silver: { hex: '#50545a', m: .60, r: .22 },
+  midnight_cherry: { hex: '#4a0c16', m: .55, r: .2, vivid: true },
   silver_metallic: { hex: '#b1b5b9', m: .75, r: .20, light: true },
   glacier_blue:  { hex: '#aebfcb', m: .25, r: .24, light: true },
   frost_blue:    { hex: '#8fa8bd', m: .60, r: .20, light: true },

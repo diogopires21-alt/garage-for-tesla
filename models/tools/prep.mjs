@@ -3,7 +3,7 @@
 //  - dá nomes fixos aos materiais que o cartão usa (Paint, Glass, Tyre, Rim, HeadLight, TailLight, RearLightBar, Seats)
 //  - separa peças que estão misturadas no mesmo material (faróis da frente, bancos)
 //  - comprime (meshopt) e tira o que não é usado
-// uso: node models/tools/prep.mjs <m3_classic|my_juniper> <entrada.glb> <saída.glb>
+// uso: node models/tools/prep.mjs <m3_classic|my_juniper|my_classic> <entrada.glb> <saída.glb>
 // m3_classic: depois correr  node models/tools/drop.mjs <saída.glb> <saída.glb> --suporte BlackWash  (tira o suporte da matrícula)
 //             e por fim  node models/tools/m3classic-front.mjs <saída.glb> <saída.glb>  (grelha preta da frente)
 import { NodeIO, getBounds, PropertyType } from '@gltf-transform/core';
@@ -46,6 +46,21 @@ const CFG = {
       Material_111: { m: .6, r: .4 }, black222: { m: .6, r: .35 }, 'black.002': { m: .5, r: .4 },
     },
   },
+  my_classic: {   // Model Y 2020–2024 — "Tesla Model Y 2021" de 763468712 (Sketchfab, CC BY 4.0); todos os materiais vêm baços (met 0, rough .89)
+    rename: { body: 'Paint', glass_body: 'Glass', glass_lights: 'GlassLamp', tires: 'Tyre', wheels: 'Rim', chrome_rear_lights: 'TailLight' },
+    merge: { glass_front_lights: 'GlassLamp' },
+    split: [{ from: 'chrome', to: 'HeadLight', tri: f => f[0] > .88 && f[1] > .3 }, { from: 'Glass', to: 'GlassRoof', tri: f => f[1] > .9 }],   // faróis: o interior cromado vem no mesmo material que os outros cromados; tejadilho de vidro mais escuro, como no Juniper
+    seats: 'interior',
+    tweak: {
+      Glass: { color: [.01, .02, .03, .35], m: .05, r: 0 }, GlassRoof: { color: [.01, .015, .02, .55], m: .05, r: 0 }, GlassLamp: { color: [.03, .03, .035, .3], m: .1, r: 0 },
+      HeadLight: { color: [.9, .9, .92, 1], m: .2, r: .2 }, TailLight: { color: [.3, 0, 0, 1], m: .5, r: .15 },
+      Rim: { color: [.42, .43, .45, 1], m: .9, r: .3 }, Tyre: { color: [.06, .06, .06, 1], m: 0, r: .85 },
+      chrome: { color: [.8, .8, .8, 1], m: 1, r: .15 }, chrome_dark: { m: .8, r: .25 }, chrome_rear_2: { color: [.85, .85, .85, 1], m: .6, r: .15 },
+      metal: { color: [.03, .03, .03, 1], m: .3, r: .35 },   // contorno das janelas: preto (a maioria dos Model Y já vinha sem cromados)
+      alum: { m: .7, r: .35 }, calipers: { color: [.12, .12, .13, 1], m: .5, r: .4 }, calipers2: { m: .5, r: .4 }, brakedsk: { color: [.25, .25, .26, 1], m: .8, r: .4 },
+      black: { r: .45 }, black2: { m: .2, r: .2 }, fenders: { r: .5 }, interior: { color: [.03, .03, .03, 1], r: .55 },
+    },
+  },
 }[key];
 if (!CFG) throw new Error('modelo desconhecido: ' + key);
 
@@ -79,6 +94,7 @@ const splitPrim = (node, prim, toMat, pick) => {
   const keep = [], move = [];
   for (let t = 0; t < idx.getCount(); t += 3) { const tri = [idx.getScalar(t), idx.getScalar(t + 1), idx.getScalar(t + 2)]; (pick(tri, F) ? move : keep).push(...tri); }
   if (!move.length) return 0;
+  if (!keep.length) { prim.setMaterial(toMat); return move.length / 3; }   // peça toda movida: só troca o material (um primitivo vazio rebenta o meshopt)
   const mk = arr => doc.createAccessor().setType('SCALAR').setArray(pos.getCount() > 65535 ? new Uint32Array(arr) : new Uint16Array(arr)).setBuffer(idx.getBuffer());
   prim.setIndices(mk(keep));
   const np = prim.clone().setIndices(mk(move)).setMaterial(toMat);
@@ -114,9 +130,9 @@ if (CFG.seats) {
 // 3) acabamentos
 for (const [name, t] of Object.entries(CFG.tweak || {})) {
   const m = byName(name); if (!m) { console.warn('sem material', name); continue; }
-  if (t.color) m.setBaseColorFactor(t.color); if (t.m !== undefined) m.setMetallicFactor(t.m); if (t.r !== undefined) m.setRoughnessFactor(t.r);
+  if (t.color) { m.setBaseColorFactor(t.color); if (t.color[3] < 1) m.setAlphaMode('BLEND'); } if (t.m !== undefined) m.setMetallicFactor(t.m); if (t.r !== undefined) m.setRoughnessFactor(t.r);   // cor com transparência → BLEND (o Model Y 2020–2024 vinha com os vidros opacos)
 }
 
-await doc.transform(dedup({ propertyTypes: ['Accessor', 'Mesh', 'Texture'] }), prune(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+await doc.transform(dedup({ propertyTypes: ['Accessor', 'Mesh', 'Texture'] }), prune(), ...(process.env.NOCOMP ? [] : [meshopt({ encoder: MeshoptEncoder, level: 'medium' })]));
 await io.write(outFile, doc);
 console.log('ok', outFile);
