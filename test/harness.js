@@ -94,6 +94,8 @@ for (const [id, tk, st, attrs] of E) {
   entities[id] = { entity_id: id, device_id: DEV, translation_key: tk, platform: 'tessie' };
 }
 const log = [];
+// ?lag=segundos: atraso da Tesla Custom a mostrar o novo estado do clima (no mockup, 30 s com a opção Tesla Custom)
+let LAG = (+q.get('lag') || 0) * 1000, lagT;
 window.__calls = log;
 const card = document.createElement('garage-for-tesla-card');
 let hass;
@@ -112,6 +114,7 @@ function push() {
         const f = cur.attributes.supported_features || 0; // recusa como o HA quando a entidade não aceita o comando
         if ((s === 'turn_on' && !(f & 128)) || (s === 'turn_off' && !(f & 256))) throw new Error(`Entity ${id} does not support action climate.${s}`);
         if (s === 'set_temperature') states[id] = { ...cur, attributes: { ...cur.attributes, temperature: data.temperature } };
+        else if (s === 'set_hvac_mode' && LAG) { clearTimeout(lagT); lagT = setTimeout(() => { states[id] = { ...states[id], state: data.hvac_mode }; push(); }, LAG); } // Tesla Custom: o HA só sabe na leitura seguinte (fica o último pedido)
         else if (s === 'set_hvac_mode') set(data.hvac_mode); else set(s === 'turn_on' ? 'heat_cool' : 'off');
       }
       if (d === 'select') set(data.option);
@@ -153,6 +156,7 @@ if (demo) {
     states['binary_sensor.' + P + 'porta_da_frente_do_condutor'] = { ...states['binary_sensor.' + P + 'porta_da_frente_do_condutor'], state: C.door ? 'on' : 'off' };
     const cid = Object.keys(states).find(k => k.startsWith('climate.')); // Tesla Custom: sem TURN_ON/TURN_OFF (issue #1)
     states[cid] = { ...states[cid], attributes: { ...states[cid].attributes, supported_features: C.intg === 'custom' ? 25 : 401 } };
+    LAG = C.intg === 'custom' ? 30000 : 0;
     app.classList.toggle('mobile', C.mobile);
     document.body.classList.toggle('light', C.theme === 'light');
     push();

@@ -4,7 +4,7 @@ import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
 
-export const VERSION = '1.1.2';
+export const VERSION = '1.1.3';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -41,7 +41,7 @@ class GarageForTeslaCard extends HTMLElement {
   static getConfigElement() { return document.createElement('garage-for-tesla-card-editor'); }
   static getStubConfig(hass) { const id = findTeslaVehicle(hass); return id ? { device_id: id, color: 'pearl_white' } : { color: 'pearl_white' }; }
 
-  constructor() { super(); this.attachShadow({ mode: 'open' }); this._rows = []; this._busy = new Set(); }
+  constructor() { super(); this.attachShadow({ mode: 'open' }); this._rows = []; this._busy = new Set(); this._optim = {}; }
 
   setConfig(config) {
     if (!config) throw new Error('Invalid configuration');
@@ -153,7 +153,14 @@ class GarageForTeslaCard extends HTMLElement {
 
   // ---------- dados ----------
   _ent(key) { const o = this._config.entities && this._config.entities[key]; return o || this._map[key]; }
-  _st(key) { const id = this._ent(key); return id ? this._hass.states[id] : undefined; }
+  _st(key) {
+    const id = this._ent(key), s = id ? this._hass.states[id] : undefined, o = this._optim[key];
+    if (!o || !s) return s;
+    // estado pedido pelo utilizador enquanto o HA não confirma (a Tesla Custom só lê o carro de 11 em 11 min, issue #1)
+    const confirmed = o.on ? s.state !== 'off' && !BAD.has(s.state) : s.state === 'off';
+    if (confirmed || Date.now() > o.until) { delete this._optim[key]; return s; }
+    return { ...s, state: o.state };
+  }
   _ok(key) { const s = this._st(key); return s && !BAD.has(s.state) ? s : null; }
   _num(key) { const s = this._ok(key); const n = s ? parseFloat(s.state) : NaN; return isNaN(n) ? null : n; }
   _unit(key) { const s = this._st(key); return (s && s.attributes.unit_of_measurement) || ''; }
@@ -492,17 +499,21 @@ class GarageForTeslaCard extends HTMLElement {
   }
   // liga/desliga o AC: turn_on/turn_off quando a entidade os aceita (Tessie, Teslemetry, Tesla Fleet);
   // senão set_hvac_mode, o único que a Tesla Custom Integration aceita (issue #1)
-  _climate(s, id, k) {
+  async _climate(s, id, k) {
     const on = !!s && s.state !== 'off', a = (s && s.attributes) || {}, f = +a.supported_features || 0;
-    if (f & (on ? 256 : 128)) { this._call('climate', on ? 'turn_off' : 'turn_on', { entity_id: id }, k); return; } // 128 = TURN_ON, 256 = TURN_OFF
     const modes = a.hvac_modes || [];
-    const mode = on ? 'off' : (['heat_cool', 'auto', 'cool', 'heat'].find(m => modes.includes(m)) || modes.find(m => m !== 'off') || 'heat_cool');
-    this._call('climate', 'set_hvac_mode', { entity_id: id, hvac_mode: mode }, k);
+    const mode = ['heat_cool', 'auto', 'cool', 'heat'].find(m => modes.includes(m)) || modes.find(m => m !== 'off') || 'heat_cool';
+    // o botão muda logo e mantém o pedido até 12 min (pouco mais que um ciclo de leitura da Tesla Custom) ou até o HA confirmar
+    this._optim[k] = { on: !on, state: on ? 'off' : mode, until: Date.now() + 12 * 60000 };
+    const ok = f & (on ? 256 : 128) // 128 = TURN_ON, 256 = TURN_OFF
+      ? await this._call('climate', on ? 'turn_off' : 'turn_on', { entity_id: id }, k)
+      : await this._call('climate', 'set_hvac_mode', { entity_id: id, hvac_mode: on ? 'off' : mode }, k);
+    if (!ok) { delete this._optim[k]; this._render(); } // o comando falhou: volta ao estado anterior
   }
   async _call(domain, service, data, key) {
     if (key) { this._busy.add(key); this._render(); }
-    try { await this._hass.callService(domain, service, data); }
-    catch (e) { this._toast(this._t('failed') + (e && e.message ? ': ' + e.message : '')); }
+    try { await this._hass.callService(domain, service, data); return true; }
+    catch (e) { this._toast(this._t('failed') + (e && e.message ? ': ' + e.message : '')); return false; }
     finally { if (key) { this._busy.delete(key); this._render(); } }
   }
   _confirm(a, fn) {
