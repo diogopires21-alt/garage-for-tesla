@@ -43,7 +43,7 @@ class GarageForTeslaCardEditor extends HTMLElement {
     const data = Object.assign({ car_model: 'model3_highland', color: 'pearl_white', interior: 'white', theme: 'auto' }, this._config);
     if (!data.shortcuts) data.shortcuts = DEFAULT_SHORTCUTS.filter(k => found[k]);
     if (data.menu) data.menu = data.menu.filter(k => !TAG_KEYS.includes(k) && (k === 'climate' || !data.shortcuts.includes(k)));
-    if (!data.menu) data.menu = Object.keys(SLOTS).filter(k => SLOTS[k].kind === 'action' && found[k] && !HIDDEN_BY_DEFAULT.includes(k) && !TAG_KEYS.includes(k) && (k === 'climate' || !data.shortcuts.includes(k)));
+    if (!data.menu) data.menu = Object.keys(SLOTS).filter(k => SLOTS[k].kind === 'action' && found[k] && !(HIDDEN_BY_DEFAULT.includes(k) && !(k === 'steering_level' && !found.steering_heat)) && !TAG_KEYS.includes(k) && (k === 'climate' || !data.shortcuts.includes(k)));
     this._form.hass = h; this._form.data = data; this._form.schema = this._schema();
   }
 }

@@ -4,7 +4,7 @@ import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
 
-export const VERSION = '1.1.3';
+export const VERSION = '1.1.4';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -41,7 +41,7 @@ class GarageForTeslaCard extends HTMLElement {
   static getConfigElement() { return document.createElement('garage-for-tesla-card-editor'); }
   static getStubConfig(hass) { const id = findTeslaVehicle(hass); return id ? { device_id: id, color: 'pearl_white' } : { color: 'pearl_white' }; }
 
-  constructor() { super(); this.attachShadow({ mode: 'open' }); this._rows = []; this._busy = new Set(); this._optim = {}; }
+  constructor() { super(); this.attachShadow({ mode: 'open' }); this._rows = []; this._busy = new Set(); this._optim = {}; this._seatMode = {}; }   // _seatMode: bancos com ventilação, 'heat' ou 'cool' (o que acontece ao escolher um nível)
 
   setConfig(config) {
     if (!config) throw new Error('Invalid configuration');
@@ -202,27 +202,27 @@ class GarageForTeslaCard extends HTMLElement {
 
   _syncScene() {
     if (!this._scene || this._scene.failed || !this._map) return;
-    const cs = this._ok('charging'), st = cs ? cs.state.toLowerCase() : '';
-    const charging = st === 'charging' || st === 'starting';
-    const cable = this._ok('cable');
-    const plugged = charging || (cable ? cable.state === 'on' : (st && st !== 'disconnected'));
+    const { charging, plugged } = this._chargeInfo();
     const cl = this._ok('climate');
     const w = k => { const s = this._ok('tpms_warn_' + k); return !!(s && s.state === 'on'); };
     const op = k => { const x = this._ok(k); return !!(x && (x.state === 'open' || x.state === 'on')); };
     const se = this._ok('sentry');
-    const LV = { off: 0, low: 1, medium: 2, med: 2, high: 3, '0': 0, '1': 1, '2': 2, '3': 3 };
+    const LV = { off: 0, low: 1, medium: 2, med: 2, high: 3, '0': 0, '1': 1, '2': 2, '3': 3, 'heat low': 1, 'heat medium': 2, 'heat high': 3 }; // Heat …: Tesla Custom com bancos ventilados
     const lvl = k => { const x = this._ok(k); return x ? LV[String(x.state).toLowerCase()] || 0 : 0; };
+    // ventilação: "Cool …" na mesma entidade (Tesla Custom) ou a entidade à parte ligada (Tessie/Teslemetry)
+    const cool = k => { const x = this._ok(k), y = this._ok(k + '_cool'); return !!((x && /^cool /i.test(x.state)) || (y && String(y.state).toLowerCase() !== 'off')); };
     const sh = this._ok('steering_heat'), sl = this._ok('steering_level');
     const steerHeat = !!((sh && sh.state === 'on') || (sl && lvl('steering_level') > 0));
     this._scene.setCarState({ sentry: !!(se && se.state === 'on'), charging, plugged: !!plugged, climate: !!(cl && cl.state !== 'off'), tpmsWarn: { fl: w('fl'), fr: w('fr'), rl: w('rl'), rr: w('rr') },
-      seatHeat: { fl: lvl('seat_fl'), fr: lvl('seat_fr'), rl: lvl('seat_rl'), rr: lvl('seat_rr') }, steerHeat,
+      seatHeat: { fl: lvl('seat_fl'), fr: lvl('seat_fr'), rl: lvl('seat_rl'), rr: lvl('seat_rr') }, seatCool: { fl: cool('seat_fl'), fr: cool('seat_fr') }, steerHeat,
       open: { port: op('charge_port'), frunk: op('frunk'), trunk: op('trunk'), df: op('door_df'), dr: op('door_dr'), pf: op('door_pf'), pr: op('door_pr') } });
   }
 
   _chargeInfo() {
-    const cs = this._ok('charging'), st = cs ? cs.state.toLowerCase() : '';
+    const cs = this._ok('charging'), cable = this._ok('cable');
+    // Tesla Custom: não há sensor do estado da carga; vem no atributo charging_state do sensor do cabo
+    const raw = cs ? cs.state : cable && cable.attributes.charging_state, st = raw ? String(raw).toLowerCase() : '';
     const charging = st === 'charging' || st === 'starting';
-    const cable = this._ok('cable');
     const plugged = charging || (cable ? cable.state === 'on' : !!(st && st !== 'disconnected'));
     const mins = this._minsToFull();
     return { st, charging, plugged, complete: st === 'complete', mins, power: this._num('charge_power'), powerU: this._unit('charge_power') || 'kW' };
@@ -375,7 +375,7 @@ class GarageForTeslaCard extends HTMLElement {
   // (a climatização nos atalhos deixa no menu só a temperatura)
   _menuKeys() {
     const c = this._config, sc = this._shortcutKeys();
-    const base = Array.isArray(c.menu) ? c.menu.filter(k => SLOTS[k] && this._ent(k)) : Object.keys(SLOTS).filter(k => SLOTS[k].kind === 'action' && this._ent(k) && !HIDDEN_BY_DEFAULT.includes(k));
+    const base = Array.isArray(c.menu) ? c.menu.filter(k => SLOTS[k] && this._ent(k)) : Object.keys(SLOTS).filter(k => SLOTS[k].kind === 'action' && this._ent(k) && !this._hiddenByDefault(k));
     return base.filter(k => !TAG_KEYS.includes(k) && (k === 'climate' || !sc.includes(k)));
   }
   _buildMenu() {
@@ -443,15 +443,53 @@ class GarageForTeslaCard extends HTMLElement {
       };
     } else if (S.d === 'select') {
       const seg = document.createElement('div'); seg.className = 'seg'; row.appendChild(seg); small.style.display = 'none';
-      let opts = null;
+      let opts = null, last = null, picking = false;
+      // ventilação: ou vem na mesma entidade (Tesla Custom: "Heat Low"/"Cool Low"…) ou numa entidade à parte (Tessie/Teslemetry: seat_fl_cool)
+      const ic = row.querySelector('.ic'), isCool = v => /^cool /i.test(v), isHeat = v => /^heat /i.test(v);
+      const coolKey = { seat_fl: 'seat_fl_cool', seat_fr: 'seat_fr_cool' }[k], cool = () => coolKey ? this._ok(coolKey) : null;
+      const isOn = x => !!x && !BAD.has(x.state) && String(x.state).toLowerCase() !== 'off';
+      const mode = () => this._seatMode[k] || 'heat';
+      const draw = s => {
+        const all = s.attributes.options || [], joint = all.some(isCool), c = cool(), vent = joint || !!c;
+        ic.classList.toggle('pick', vent); ic.setAttribute('role', vent ? 'button' : ''); ic.setAttribute('aria-label', vent ? this._t('seat_mode') : '');
+        if (vent) ic.querySelector('ha-icon').setAttribute('icon', mode() === 'cool' ? 'mdi:car-seat-cooler' : 'mdi:car-seat-heater');
+        seg.innerHTML = '';
+        if (vent && picking) {   // escolha do modo: o banco fica com o ícone escolhido
+          for (const [m, icn] of [['heat', 'mdi:car-seat-heater'], ['cool', 'mdi:car-seat-cooler']]) {
+            const b = document.createElement('button'); b.className = 'mode' + (mode() === m ? ' on' : '');
+            b.innerHTML = `<ha-icon icon="${icn}"></ha-icon>${esc(this._t('seat_' + m))}`;
+            b.onclick = () => { this._seatMode[k] = m; picking = false; opts = null; update(); };
+            seg.appendChild(b);
+          }
+          return;
+        }
+        const ek = !joint && c && mode() === 'cool' ? coolKey : k;   // entidade a que os botões falam
+        const src = ek === k ? all : c.attributes.options || [];
+        const o = joint ? src.filter(v => mode() === 'cool' ? !isHeat(v) : !isCool(v)) : src.slice();
+        o.sort((a, b) => (/^auto$/i.test(a) ? 1 : 0) - (/^auto$/i.test(b) ? 1 : 0));   // "Auto" sempre no fim
+        o.forEach((op, i) => {
+          const b = document.createElement('button'); b.dataset.v = op; b.dataset.k = ek; b.textContent = this._segLabel(op, i, o);
+          b.onclick = () => {
+            this._call('select', 'select_option', { entity_id: this._ent(ek), option: op }, k);
+            // entidades à parte: ligar uma desliga a outra (o banco não aquece e ventila ao mesmo tempo)
+            const other = c && !joint ? (ek === k ? coolKey : k) : null, os = other && this._ok(other);
+            if (String(op).toLowerCase() !== 'off' && isOn(os)) this._call('select', 'select_option', { entity_id: this._ent(other), option: (os.attributes.options || []).find(v => /^off$/i.test(v)) || 'off' }, k);
+          };
+          seg.appendChild(b);
+        });
+      };
+      ic.onclick = () => { if (!ic.classList.contains('pick')) return; picking = !picking; opts = null; update(); };
       update = () => {
         const s = this._st(k); if (!s) return;
-        const o = s.attributes.options || [];
-        if (JSON.stringify(o) !== JSON.stringify(opts)) {
-          opts = o; seg.innerHTML = '';
-          o.forEach((op, i) => { const b = document.createElement('button'); b.dataset.v = op; b.textContent = this._segLabel(op, i); b.onclick = () => this._call('select', 'select_option', { entity_id: id(), option: op }, k); seg.appendChild(b); });
+        const c = cool(), now = JSON.stringify([s.state, c && c.state]);
+        if (now !== last) {   // segue o que o carro está a fazer
+          last = now;
+          if (isCool(s.state) || isOn(c)) this._seatMode[k] = 'cool'; else if (isHeat(s.state) || (c && isOn(s))) this._seatMode[k] = 'heat';
+          opts = null;
         }
-        seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === s.state));
+        const key = JSON.stringify([s.attributes.options, c && c.attributes.options, mode(), picking]);
+        if (key !== opts) { opts = key; draw(s); }
+        seg.querySelectorAll('button[data-v]').forEach(b => { const x = this._ok(b.dataset.k); b.classList.toggle('on', !!x && b.dataset.v === x.state); });
       };
     } else if (S.d === 'number') {
       const val = document.createElement('span'); val.className = 'val'; top.appendChild(val); small.style.display = 'none';
@@ -468,10 +506,14 @@ class GarageForTeslaCard extends HTMLElement {
     }
     return { update };
   }
-  _segLabel(op, i) {
-    const o = String(op).toLowerCase();
+  // o nível do volante só fica escondido quando há o interruptor (na Tesla Custom os carros mais novos só têm o nível)
+  _hiddenByDefault(k) { return HIDDEN_BY_DEFAULT.includes(k) && !(k === 'steering_level' && !this._ent('steering_heat')); }
+  _segLabel(op, i, all) {
+    const o = String(op).toLowerCase().replace(/^(heat|cool) /, '');   // Tesla Custom: "Heat Low", "Cool High"…
     if (o === 'off') return lang(this._hass) === 'pt' ? 'Desl.' : 'Off';
-    const m = { low: '1', medium: '2', high: '3', '1': '1', '2': '2', '3': '3', auto: 'Auto' };
+    // só dois níveis (volante: Low/High) → 1 e 2
+    const two = all && !all.some(v => /medium$/i.test(String(v)));
+    const m = { low: '1', medium: '2', high: two ? '2' : '3', '1': '1', '2': '2', '3': '3', auto: 'Auto' };
     return m[o] || String(op);
   }
 
@@ -483,7 +525,12 @@ class GarageForTeslaCard extends HTMLElement {
         case 'lock': { const locked = s && s.state === 'locked'; this._call('lock', locked ? 'unlock' : 'lock', { entity_id: id }, k); this._scene && this._scene.fx('lock'); break; }
         case 'switch': this._call('switch', s && s.state === 'on' ? 'turn_off' : 'turn_on', { entity_id: id }, k); break;
         case 'climate': this._climate(s, id, k); break;
-        case 'cover': this._call('cover', s && s.state === 'open' ? 'close_cover' : 'open_cover', { entity_id: id }, k); break;
+        case 'cover': {
+          const open = s && s.state === 'open', f = s && s.attributes.supported_features;
+          // frunk (todas as integrações) e bagageira sem porta elétrica (Tesla Custom) só abrem: fecham-se à mão
+          if (open && f != null && !(+f & 2)) { this._toast(this._t(k === 'frunk' ? 'm_frunk' : k === 'trunk' ? 'hand_trunk' : 'failed')); break; } // 2 = CLOSE
+          this._call('cover', open ? 'close_cover' : 'open_cover', { entity_id: id }, k); break;
+        }
         case 'button': this._call('button', 'press', { entity_id: id }, k);
           if (k === 'flash') this._scene && this._scene.fx('flash'); if (k === 'honk') this._scene && this._scene.fx('honk'); break;
         default: break;

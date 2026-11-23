@@ -10,7 +10,7 @@ export const SLOTS = {
   charging:      { d: 'sensor', kind: 'info', tk: ['charge_state_charging_state'], re: /(charging_state|_charging|a_carregar)$/ },
   charge_power:  { d: 'sensor', kind: 'info', tk: ['charge_state_charger_power'], re: /(charger_power|charging_power|potencia_do_carregador)$/ },
   charge_rate:   { d: 'sensor', kind: 'info', tk: ['charge_state_charge_rate'], re: /(charge_rate|charging_rate|taxa_de_carregamento)$/ },
-  time_to_full:  { d: 'sensor', kind: 'info', tk: ['charge_state_minutes_to_full_charge'], re: /(minutes_to_full|time_to_full|tempo_ate_a_carga_completa)/ },
+  time_to_full:  { d: 'sensor', kind: 'info', tk: ['charge_state_minutes_to_full_charge'], re: /(minutes_to_full|time_to_full|time_charge_complete|tempo_ate_a_carga_completa)/ },
   energy_added:  { d: 'sensor', kind: 'info', tk: ['charge_state_charge_energy_added'], re: /(energy_added|energia_de_carga_adicionada)$/ },
   cable:         { d: 'binary_sensor', kind: 'info', tk: ['charge_state_conn_charge_cable'], re: /(charge_cable|charger|cabo_de_carregamento)$/ },
   odometer:      { d: 'sensor', kind: 'info', tk: ['vehicle_state_odometer'], re: /(odometer|odometro)$/ },
@@ -41,11 +41,14 @@ export const SLOTS = {
   climate:       { d: 'climate', kind: 'action', tk: ['primary', 'driver_temp'], re: /(hvac_climate_system|climatizacao|_climate)$/, not: /(overheat|sobreaquecimento)/, icon: 'mdi:fan', sec: 'climate' },
   defrost:       { d: 'switch', kind: 'action', tk: ['climate_state_defrost_mode'], re: /(defrost|descongelacao)/, icon: 'mdi:car-defrost-front', sec: 'climate' },
   steering_heat: { d: 'switch', kind: 'action', tk: ['climate_state_steering_wheel_heater'], re: /(heated_steering|steering_wheel_heater|aquecedor_do_volante)$/, icon: 'mdi:steering', sec: 'climate' },
-  steering_level:{ d: 'select', kind: 'action', tk: ['climate_state_steering_wheel_heat_level'], icon: 'mdi:steering', sec: 'climate' },
+  steering_level:{ d: 'select', kind: 'action', tk: ['climate_state_steering_wheel_heat_level'], re: /(heated_steering_wheel)$/, icon: 'mdi:steering', sec: 'climate' },
   seat_fl:       { d: 'select', kind: 'action', tk: ['climate_state_seat_heater_left'], re: /(heated_seat_left|seat_heater_left|aquecedor_do_assento_esquerdo)$/, icon: 'mdi:car-seat-heater', sec: 'climate' },
   seat_fr:       { d: 'select', kind: 'action', tk: ['climate_state_seat_heater_right'], re: /(heated_seat_right|seat_heater_right|aquecedor_do_assento_direito)$/, icon: 'mdi:car-seat-heater', sec: 'climate' },
   seat_rl:       { d: 'select', kind: 'action', tk: ['climate_state_seat_heater_rear_left'], re: /(heated_seat_rear_left|seat_heater_rear_left|assento_traseiro_da_esquerda)$/, icon: 'mdi:car-seat-heater', sec: 'climate' },
   seat_rr:       { d: 'select', kind: 'action', tk: ['climate_state_seat_heater_rear_right'], re: /(heated_seat_rear_right|seat_heater_rear_right|assento_traseiro_da_direita)$/, icon: 'mdi:car-seat-heater', sec: 'climate' },
+  // ventilação dos bancos da frente quando vem à parte (Tessie, Teslemetry): usada pela linha do banco (Aquecer/Ventilar), não tem linha própria
+  seat_fl_cool:  { d: 'select', kind: 'info', tk: ['climate_state_seat_fan_front_left'] },
+  seat_fr_cool:  { d: 'select', kind: 'info', tk: ['climate_state_seat_fan_front_right'] },
   charge:        { d: 'switch', kind: 'action', tk: ['charge_state_charging_state', 'charge_state_charge_enable_request'], re: /(_charger|_charge|_carregar)$/, icon: 'mdi:ev-station', sec: 'charging' },
   charge_port:   { d: 'cover', kind: 'action', tk: ['charge_state_charge_port_door_open'], re: /(charger_door|charge_port|porta_de_carregamento)/, icon: 'mdi:ev-plug-type2', sec: 'charging' },
   charge_limit:  { d: 'number', kind: 'action', tk: ['charge_state_charge_limit_soc'], re: /(charge_limit|limite_de_carga)$/, icon: 'mdi:battery-charging-80', sec: 'charging' },
@@ -58,7 +61,7 @@ export const SLOTS = {
   wake:          { d: 'button', kind: 'action', tk: ['wake'], re: /(wake_up|_wake|acordar)$/, icon: 'mdi:sleep-off', sec: 'actions' },
   homelink:      { d: 'button', kind: 'action', tk: ['trigger_homelink', 'homelink'], re: /(homelink)$/, icon: 'mdi:garage-variant', sec: 'actions' },
   boombox:       { d: 'button', kind: 'action', tk: ['boombox'], re: /(boombox|reproduzir_peido)$/, icon: 'mdi:volume-high', sec: 'actions' },
-  keyless:       { d: 'button', kind: 'action', tk: ['enable_keyless_driving'], re: /(keyless|conducao_sem_chave)/, icon: 'mdi:key-wireless', confirm: true, sec: 'actions' },
+  keyless:       { d: 'button', kind: 'action', tk: ['enable_keyless_driving'], re: /(keyless|conducao_sem_chave|remote_start)/, icon: 'mdi:key-wireless', confirm: true, sec: 'actions' },
 };
 
 export const SECTIONS = ['security', 'climate', 'charging', 'access', 'actions'];

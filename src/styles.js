@@ -140,6 +140,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-acti
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;margin-top:8px}
 .seg button{height:30px;border-radius:99px;font-size:12.5px;font-weight:600;color:var(--fg2);background:var(--tile);border:1px solid var(--tile-b)}
 .seg button.on{background:var(--blue);color:#fff;border-color:transparent}
+.seg button.mode{display:flex;align-items:center;justify-content:center;gap:5px}
+.seg button.mode ha-icon{--mdc-icon-size:16px}
+/* bancos com ventilação: o ícone é um botão (Aquecer/Ventilar), com setinhas no canto */
+.row .ic.pick{cursor:pointer;box-shadow:inset 0 0 0 1.5px var(--blue)}
+.row .ic.pick:after{content:"";position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:50%;background:var(--blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='M21 9l-4-4v3h-7v2h7v3M7 11l-4 4 4 4v-3h7v-2H7v-3z'/%3E%3C/svg%3E") center/11px no-repeat}
 .sl{display:flex;align-items:center;gap:10px;margin-top:6px}
 .sl input{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:linear-gradient(to right,var(--blue) var(--p,50%),var(--track) var(--p,50%));outline:none}
 .root.dark .sl input{background:linear-gradient(to right,var(--blue) var(--p,50%),rgba(255,255,255,.16) var(--p,50%))}

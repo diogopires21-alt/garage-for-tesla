@@ -670,14 +670,18 @@ export class CarScene {
     const pulse = .5 - .5 * Math.cos(t * Math.PI * 2 / 1.6);
     const port = S.charging ? .5 + .5 * pulse : S.plugged ? .45 : 0;
     const col = S.charging ? 0x2bd673 : 0x3b82f6;
-    // aquecimento ligado: o banco (cada um) e o volante piscam a vermelho, inteiros, ao ritmo das peças abertas (1,2 s); o nível não conta
+    // aquecimento ligado: o banco (cada um) e o volante piscam a vermelho, inteiros, ao ritmo das peças abertas (1,2 s); o nível não conta. Ventilação: azul
     let heatOn = false;
     if (G.heat) {
       const hp = (.5 - .5 * Math.cos(t * Math.PI * 2 / 1.2)) * (S.dark ? .8 : .9), red = this._heatRed ||= new THREE.Color(1, .01, .01);
-      const paint = (m, on) => { const mt = m.material; if (typeof mt.userData.heatBase !== 'number') mt.userData.heatBase = mt.color.getHex();   // número: sobrevive às cópias do material
+      const blue = this._coolBlue ||= new THREE.Color(.02, .35, 1);   // ventilação: o banco pisca a azul, da mesma forma
+      const paint = (m, on, c = red) => { const mt = m.material; if (typeof mt.userData.heatBase !== 'number') mt.userData.heatBase = mt.color.getHex();   // número: sobrevive às cópias do material
         if (!on && !mt.userData.heatLit) return; mt.userData.heatLit = on;
-        mt.color.setHex(mt.userData.heatBase); if (on) mt.color.lerp(red, hp); mt.emissive.copy(red); mt.emissiveIntensity = on ? hp * 2.2 : 0; };
-      for (const [k, list] of Object.entries(G.heat.seats)) { const on = !!(S.seatHeat && S.seatHeat[k]); heatOn ||= on && list.length > 0; list.forEach(m => paint(m, on)); }
+        mt.color.setHex(mt.userData.heatBase); if (on) mt.color.lerp(c, hp); mt.emissive.copy(c); mt.emissiveIntensity = on ? hp * 2.2 : 0; };
+      for (const [k, list] of Object.entries(G.heat.seats)) {
+        const h = !!(S.seatHeat && S.seatHeat[k]), c = !h && !!(S.seatCool && S.seatCool[k]);   // aquecer manda; ventilar só se não estiver a aquecer
+        heatOn ||= (h || c) && list.length > 0; list.forEach(m => paint(m, h || c, c ? blue : red));
+      }
       G.heat.steer.forEach(m => paint(m, !!S.steerHeat)); heatOn ||= !!S.steerHeat && G.heat.steer.length > 0;
     }
     G.under.material.color.set(col);
