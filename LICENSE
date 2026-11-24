@@ -40,3 +40,9 @@ The 3D car models in dist/*.glb are NOT covered by the MIT licence:
 
 All were compressed (meshopt/WebP), rotated, and had materials renamed or split
 (lights, seats); the paint and seat colours are changed at runtime.
+
+---
+The font embedded in the card for the energy written on the floor (src/floorfont.js) is a
+subset of Inter Light, Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter),
+licensed under the SIL Open Font License 1.1 - see LICENSE-Inter-OFL.txt. It is NOT covered
+by the MIT licence.

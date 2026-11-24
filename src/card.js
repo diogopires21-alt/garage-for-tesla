@@ -4,7 +4,7 @@ import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
 
-export const VERSION = '1.1.4';
+export const VERSION = '1.2.0';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -185,7 +185,7 @@ class GarageForTeslaCard extends HTMLElement {
     r.classList.toggle('dark', dark); r.classList.toggle('light', !dark);
     r.style.setProperty('--center', bg.center); r.style.setProperty('--mid', bg.mid); r.style.setProperty('--edge', bg.edge);
     this.$.stage.classList.toggle('vivid', !!bg.vivid);
-    if (this._scene && !this._scene.failed) { this._scene.setTheme(dark); this._scene.setPaint(paint); this._scene.setInterior(c.interior === 'black' ? 'black' : 'white'); }
+    if (this._scene && !this._scene.failed) { this._scene.setTheme(dark); this._scene.setPaint(paint); this._scene.setInterior(c.interior === 'black' ? 'black' : 'white'); this._scene.setFloorVivid && this._scene.setFloorVivid(!dark && !!bg.vivid); }
 
     if (!this._device || !Object.keys(this._map).length) {
       this.$.menu.innerHTML = `<div class="empty">${esc(this._t('no_car'))}</div>`; this._structKey = 'empty';
@@ -216,6 +216,9 @@ class GarageForTeslaCard extends HTMLElement {
     this._scene.setCarState({ sentry: !!(se && se.state === 'on'), charging, plugged: !!plugged, climate: !!(cl && cl.state !== 'off'), tpmsWarn: { fl: w('fl'), fr: w('fr'), rl: w('rl'), rr: w('rr') },
       seatHeat: { fl: lvl('seat_fl'), fr: lvl('seat_fr'), rl: lvl('seat_rl'), rr: lvl('seat_rr') }, seatCool: { fl: cool('seat_fl'), fr: cool('seat_fr') }, steerHeat,
       open: { port: op('charge_port'), frunk: op('frunk'), trunk: op('trunk'), df: op('door_df'), dr: op('door_dr'), pf: op('door_pf'), pr: op('door_pr') } });
+    // energia adicionada, escrita no chão: a carregar e enquanto o cabo estiver ligado (pedido do Diogo, 24/11/2026)
+    const ea = this._num('energy_added');
+    this._scene.setFloorText && this._scene.setFloorText(plugged && ea != null ? '+' + this._fmt(ea, 1) + ' ' + (this._unit('energy_added') || 'kWh') : '');
   }
 
   _chargeInfo() {

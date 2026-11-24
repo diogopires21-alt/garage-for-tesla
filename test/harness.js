@@ -42,6 +42,7 @@ const mkE = () => [
   ...(CUSTOM ? [] : [['sensor.' + P + 'a_carregar', 'charge_state_charging_state', q.get('chg') || 'disconnected', {}]]),
   ['sensor.' + P + 'potencia_do_carregador', 'charge_state_charger_power', '10.8', { unit_of_measurement: 'kW' }],
   ['sensor.' + P + 'taxa_de_carregamento', 'charge_state_charge_rate', '62', { unit_of_measurement: 'km/h' }],
+  CUSTOM ? ['sensor.' + P + 'energy_added', null, q.get('kwh') || '22.4', { unit_of_measurement: 'kWh' }] : ['sensor.' + P + 'energia_de_carga_adicionada', 'charge_state_charge_energy_added', q.get('kwh') || '22.4', { unit_of_measurement: 'kWh' }],
   // como o Tessie/Teslemetry/Tesla Fleet: hora de fim (timestamp); ?ttf=min → formato antigo em minutos
   CUSTOM
     ? ['sensor.' + P + 'time_charge_complete', null, new Date(Date.now() + 59 * 60000 + 30000).toISOString().replace(/\.\d+Z$/, '+00:00'), { device_class: 'timestamp' }]

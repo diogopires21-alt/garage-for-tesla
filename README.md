@@ -10,7 +10,7 @@ A 3D dashboard card for Home Assistant that puts your Tesla front and centre: a 
 
 - **3D car** you can rotate, with a reflective glass floor and a background that matches your paint colour.
 - **Information on the car itself**: lock state on the roof, frunk and trunk at each end, charging power at the charge port, tyre pressures on a top-down view, battery and range in the header.
-- **Live effects on the 3D car**: charging light under the car, Sentry Mode scan, open doors/frunk and low tyres blinking orange, heated seats and heated steering wheel blinking red, ventilated seats blinking blue.
+- **Live effects on the 3D car**: charging light under the car, energy added written on the floor next to the car while the cable is plugged in, Sentry Mode scan, open doors/frunk and low tyres blinking orange, heated seats and heated steering wheel blinking red, ventilated seats blinking blue.
 - **Controls menu on the right**, grouped like iOS Settings: security, climate, charging, doors & windows, quick actions. You choose which ones appear.
 - **Shortcut row** under the car (lights, horn, climate, windows, frunk… you pick).
 - Light and dark mode (follows Home Assistant or set it yourself), Portuguese and English.
@@ -94,7 +94,7 @@ The card finds these sensors by itself with Tessie, Teslemetry, Tesla Fleet and 
 | `charge_power` | `sensor` | Charging power (kW), shown at the charge port while charging |
 | `charge_rate` | `sensor` | Charging speed (km/h or mi/h). Not shown yet |
 | `time_to_full` | `sensor` | When charging ends: a date/time (`device_class: timestamp`) or minutes left (or hours, with unit `h`) |
-| `energy_added` | `sensor` | Energy added in this session (kWh). Not shown yet |
+| `energy_added` | `sensor` | Energy added in this session (kWh), written on the floor next to the car while the cable is plugged in |
 | `cable` | `binary_sensor` | Charge cable plugged in: `on` = plugged, `off` = not plugged. **Not** `charge_port`: that one is the charge port door control (a `cover`) |
 | `odometer` | `sensor` | Odometer, with its unit |
 | `inside_temp`, `outside_temp` | `sensor` | Temperatures in °C or °F |
@@ -128,6 +128,7 @@ entities:
 Other:
 
 - 3D engine: [three.js](https://threejs.org) (MIT).
+- Font for the energy on the floor: [Inter](https://github.com/rsms/inter) Light by The Inter Project Authors, [SIL Open Font License 1.1](LICENSE-Inter-OFL.txt) (only the characters it needs are embedded).
 - Code: MIT licence.
 
 ## Roadmap

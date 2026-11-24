@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
+import { INTER_LIGHT } from './floorfont.js';
 
 const REFL_SHADER = {
   uniforms: {
@@ -106,7 +107,7 @@ export class CarScene {
     refl.rotation.x = -Math.PI / 2; refl.material.transparent = true; refl.material.depthWrite = false; refl.renderOrder = 0;
     scene.add(refl); G.refl = refl;
     const reflRender = refl.onBeforeRender;
-    refl.onBeforeRender = (...a) => { if (G.reflNeed > 0 || G.moving || G.animating) { reflRender.apply(refl, a); if (G.reflNeed > 0) G.reflNeed--; } };
+    refl.onBeforeRender = (...a) => { if (G.reflNeed > 0 || G.moving || G.animating) { const ft = G.ftext, v = ft && ft.visible; if (ft) ft.visible = false; reflRender.apply(refl, a); if (ft) ft.visible = v; if (G.reflNeed > 0) G.reflNeed--; } };   // o texto do chão não entra no reflexo
 
     const ground = G.ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: .28 }));
     ground.rotation.x = -Math.PI / 2; ground.position.y = 0.001; ground.receiveShadow = true; ground.renderOrder = 1; scene.add(ground);
@@ -224,6 +225,7 @@ export class CarScene {
     G.ring = new THREE.Mesh(new THREE.RingGeometry(.9, 1, 64), new THREE.MeshBasicMaterial({ color: 0x5a86ff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
     G.ring.rotation.x = -Math.PI / 2; G.ring.position.set(box.max.x - .35, .01, 0); scene.add(G.ring);   // centro por baixo da frente (para-choques)
     this._sentryFloor(box);
+    this._floorTextInit(box);
     // porta de carga aberta: pequeno ponto laranja a piscar por cima dela (no modelo a porta não é uma peça à parte)
     const pd = G.portDot = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTex([[0, 'rgba(255,255,255,1)'], [.35, 'rgba(255,255,255,.9)'], [.6, 'rgba(255,255,255,.3)'], [1, 'rgba(255,255,255,0)']]), color: 0xff8a00, transparent: true, opacity: 0, depthWrite: false, depthTest: false, toneMapped: false }));
     // posição a partir do próprio modelo: a ponta de fora do farolim traseiro esquerdo (o ponto mais à esquerda dele)
@@ -522,6 +524,7 @@ export class CarScene {
   }
   setTheme(dark) { if (this.state.dark === dark && this._themed) return; this._themed = !!this.G.ground && !!this.G.box; this.state.dark = dark; this._applyTheme(); }
   _applyTheme() {
+    this._floorTextDraw();
     const G = this.G, d = this.state.dark; if (!G.ground) return;
     this._applyPaint();
     G.ground.material.opacity = d ? .5 : .22; G.blob.material.opacity = d ? 1 : .7;
@@ -576,6 +579,68 @@ export class CarScene {
   }
 
   setCarState(s) { Object.assign(this.state, s); }
+
+  // Energia adicionada escrita no chão, ao lado do carro (pedido do Diogo, 24/11/2026): letra fina (Inter Light), branco suave no tema escuro.
+  // Fica do lado do carro virado para a câmara e lê-se sempre da esquerda para a direita (troca de lado com um fade quando se roda o carro).
+  _floorTextInit(box) {
+    const G = this.G, L = box.max.x - box.min.x, W = box.max.z - box.min.z;
+    const cv = document.createElement('canvas'); cv.width = 2048; cv.height = 512;
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    const w = 3.0, h = w * cv.height / cv.width;
+    const m = G.ftext = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+    m.rotation.order = 'YXZ'; m.rotation.x = -Math.PI / 2; m.renderOrder = 6; m.visible = false;
+    G.ftCv = cv; G.ftTex = tex; G.ftX = (box.min.x + box.max.x) / 2; G.ftZ0 = W / 2 + .2; G.ftH = h; G.ftPlace = ''; G.ftFade = 0; G.ftText = '';   // a 20 cm da carroçaria, centrado no comprimento (pedido do Diogo, 24/11/2026)
+    this.scene.add(m);
+    if (!G.ftFont) {
+      G.ftFont = 'pending';
+      try {
+        const bin = Uint8Array.from(atob(INTER_LIGHT), c => c.charCodeAt(0));
+        const ff = new FontFace('GFT Inter', bin.buffer, { weight: '300' });
+        ff.load().then(f => { document.fonts.add(f); G.ftFont = 'ok'; this._floorTextDraw(true); }, () => { G.ftFont = 'fail'; this._floorTextDraw(true); });
+      } catch (e) { G.ftFont = 'fail'; }
+    }
+  }
+  setFloorText(txt) { this.state.floorText = txt || ''; this._floorTextDraw(); }
+  setFloorVivid(v) { this.state.vivid = !!v; this._floorTextDraw(); }   // fundo de cor forte (vermelhos, azuis) no tema claro
+  _floorTextDraw(force) {
+    const G = this.G; if (!G.ftCv) return;
+    const txt = this.state.floorText || '', white = this.state.dark || !!this.state.vivid;
+    if (!force && txt === G.ftText && white === G.ftWhite) return;
+    G.ftText = txt; G.ftWhite = white;
+    const cv = G.ftCv, x = cv.getContext('2d');
+    x.clearRect(0, 0, cv.width, cv.height);
+    if (txt) {
+      x.font = `300 300px ${G.ftFont === 'ok' ? '"GFT Inter", ' : ''}-apple-system, "Segoe UI", Roboto, sans-serif`;
+      x.textAlign = 'center'; x.textBaseline = 'middle';
+      // branco no tema escuro e no tema claro com fundo de cor forte (vermelhos, azuis); preto no resto do tema claro (pedido do Diogo, 24/11/2026)
+      x.fillStyle = white ? '#ffffff' : '#000000';
+      x.fillText(txt, cv.width / 2, cv.height / 2 + 10, cv.width - 40);
+    }
+    G.ftTex.needsUpdate = true;
+  }
+  _floorTextFrame() {
+    const G = this.G, m = G.ftext; if (!m) return;
+    const now = performance.now(), dt = Math.min(.1, (now - (G.ftT || now)) / 1000); G.ftT = now;
+    const want = this.state.floorText ? 1 : 0;
+    // de que lado está a câmara: esquerda/direita (lados compridos) ou frente/trás (só perto do eixo do carro); com folga para não saltar
+    const cx = this.camera.position.x - this.controls.target.x, cz = this.camera.position.z - this.controls.target.z;
+    const sideNow = G.ftPlace === 'l' || G.ftPlace === 'r';
+    const k = sideNow || !G.ftPlace ? .45 : .75;   // muda para frente/trás abaixo de ~24°; volta para o lado acima de ~37°
+    const place = Math.abs(cz) > Math.abs(cx) * k ? (cz < 0 ? 'l' : 'r') : (cx > 0 ? 'f' : 'b');
+    if (place !== G.ftPlace) {   // troca de sítio: apaga, muda, volta a aparecer
+      if (G.ftFade > .02 && G.ftPlace) G.ftFade = Math.max(0, G.ftFade - dt / .15);
+      else G.ftPlace = place;
+    } else G.ftFade = want ? Math.min(1, G.ftFade + dt / .35) : Math.max(0, G.ftFade - dt / .35);
+    // d = direção (no chão) do carro para o texto; o texto lê-se da esquerda para a direita vendo do lado de d
+    const D = { l: [0, -1], r: [0, 1], f: [1, 0], b: [-1, 0] }[G.ftPlace || 'l'], sc = this.narrow ? 1.2 : 1, B = G.box, hh = G.ftH * .5 * sc;
+    m.scale.set(sc, sc, 1); m.rotation.y = Math.atan2(D[0], D[1]);
+    if (D[1]) m.position.set(G.ftX, .007, D[1] * (G.ftZ0 + hh));
+    else m.position.set(D[0] > 0 ? B.max.x + .2 + hh : B.min.x - .2 - hh, .007, (B.min.z + B.max.z) / 2);
+    m.material.opacity = G.ftFade * (this.state.dark ? .62 : this.state.vivid ? .72 : .5);
+    m.visible = m.material.opacity > .003;
+    if (G.ftFade !== want || place !== G.ftPlace) G.animating = true;
+  }
+
   fx(name) { this.G.fx[name] = performance.now(); }
 
   setInsets(bottom, top, narrow, right) {
@@ -714,6 +779,7 @@ export class CarScene {
       u.uLight.value.y = z; u.uDir.value = ph < 1 ? 1 : -1;
       this._underMask.value = u.uOn.value;
     }
+    this._floorTextFrame();
     if (fx.honk) {
       const e = (now - fx.honk) / 1000;
       if (e > 1.8) { fx.honk = 0; G.ring.material.opacity = 0; }
