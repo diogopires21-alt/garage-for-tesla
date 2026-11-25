@@ -135,8 +135,8 @@ You can also [open the forms here](https://github.com/diogopires21-alt/garage-fo
 Other:
 
 - 3D engine: [three.js](https://threejs.org) (MIT).
-- Font for the energy on the floor: [Inter](https://github.com/rsms/inter) Light by The Inter Project Authors, [SIL Open Font License 1.1](LICENSE-Inter-OFL.txt) (only the characters it needs are embedded).
-- Code: MIT licence.
+- Font for the energy on the floor: [Inter](https://github.com/rsms/inter) Light by The Inter Project Authors, [SIL Open Font License 1.1](third-party/Inter-OFL.txt) (only the characters it needs are embedded).
+- Code: [MIT licence](LICENSE). The 3D models and the font keep their own licences: see [third-party](third-party/README.md).
 
 ## Roadmap
 
