@@ -2,7 +2,8 @@ import sys, asyncio
 from playwright.async_api import async_playwright
 async def main(qs, out, w=1600, h=940, wait=8000):
     async with async_playwright() as p:
-        b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'])
+        # Windows: Chrome instalado + placa gráfica; Linux: swiftshader (sem placa)
+        b = await (p.chromium.launch(channel='chrome', args=['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist']) if sys.platform == 'win32' else p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']))
         pg = await b.new_page(viewport={'width':w,'height':h}, device_scale_factor=1)
         logs=[]
         pg.on('console', lambda m: logs.append(f'{m.type}: {m.text}'))

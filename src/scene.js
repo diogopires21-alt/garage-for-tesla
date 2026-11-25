@@ -79,7 +79,7 @@ export class CarScene {
     this.bottomInset = 0; this.leftInset = 0;
     this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     try {
-      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
+      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
     } catch (e) { this.failed = true; return; }
     const r = this.renderer;
     r.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
@@ -261,7 +261,7 @@ export class CarScene {
         (groups[key] ||= []).push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
       }
     }
-    const mat = this.handleMat = new THREE.MeshPhysicalMaterial({ color: 0x4a4e55, metalness: .85, roughness: .32, clearcoat: .6, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8 });
+    const mat = this.handleMat = new THREE.MeshPhysicalMaterial({ color: 0x4a4e55, metalness: .85, roughness: .32, clearcoat: .6 });
     for (const [key, raw] of Object.entries(groups)) {
       if (raw.length < 27) continue;
       // fica só o puxador: tira triângulos soltos longe do centro do grupo (ex.: um bocado do friso junto ao vidro de trás)
@@ -546,7 +546,7 @@ export class CarScene {
       uniforms: { uLight: { value: new THREE.Vector2(cx, cz) }, uDir: { value: 1 }, uOn: { value: 0 }, uDark: { value: 1 }, uH: { value: .3 } },
       transparent: true, depthWrite: false, toneMapped: false,
       blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
-      // (com logarithmicDepthBuffer, os shaders à medida precisam destes includes, senão ficam escondidos)
+      // (os includes logdepthbuf só contam se se voltar a ligar o logarithmicDepthBuffer)
       vertexShader: '#include <common>\n#include <logdepthbuf_pars_vertex>\nvarying vec2 vUv; varying vec2 vW; void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xz; gl_Position = projectionMatrix * viewMatrix * w;\n#include <logdepthbuf_vertex>\n}',
       fragmentShader: `#include <logdepthbuf_pars_fragment>
         uniform vec2 uLight; uniform float uDir; uniform float uOn; uniform float uDark; uniform float uH; varying vec2 vUv; varying vec2 vW;

@@ -4,7 +4,7 @@ import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
 
-export const VERSION = '1.2.0';
+export const VERSION = '1.2.1';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
