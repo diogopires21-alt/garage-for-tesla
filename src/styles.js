@@ -154,6 +154,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-acti
 .stp{display:flex;align-items:center;gap:4px;flex:none}
 .stp button{width:34px;height:30px;border-radius:99px;background:var(--tile-on);border:1px solid var(--tile-b);display:grid;place-items:center;font-size:18px;line-height:1}
 .stp .v{min-width:54px;text-align:center;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.fb{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 6px -8px}
+.fb a{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-size:13px;font-weight:600;color:var(--fg2);text-decoration:none;-webkit-tap-highlight-color:transparent;transition:color .2s}
+.fb a:hover,.fb a:active{color:var(--fg)}
+.fb a:focus-visible{outline:3px solid color-mix(in srgb,var(--blue) 55%,transparent);outline-offset:2px;border-radius:8px}
+.fb ha-icon{--mdc-icon-size:17px}
 .credit{font-size:11px;line-height:1.5;color:var(--fg3);margin:0 6px}
 .credit a{color:inherit}
 .empty{padding:40px;color:var(--fg2);font-size:15px}
@@ -185,7 +190,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-acti
 .root.narrow{--menu-w:0px;grid-template-columns:1fr;grid-template-rows:1fr;height:var(--gft-h,var(--gft-fit,calc(100dvh - var(--header-height,56px))));min-height:480px}
 .root.narrow .stage{height:auto}
 /* telemóvel: o menu passa a uma folha que sobe de baixo, aberta pelo botão "Controlos" */
-.root.narrow .menu{position:absolute;left:8px;right:8px;bottom:8px;width:auto;margin:0;height:min(80%,640px);z-index:4;border-radius:28px;
+.root.narrow .menu{position:absolute;left:8px;right:8px;bottom:8px;width:auto;justify-self:stretch;margin:0;height:min(80%,640px);z-index:4;border-radius:28px;
   padding-top:12px;box-shadow:0 -12px 40px rgba(0,0,0,.35);transform:translateY(105%);transition:transform .38s var(--ease);visibility:hidden}
 .root.narrow.menu-open .menu{transform:none;visibility:visible}
 .root.narrow .menu .grab{display:block;width:36px;height:5px;border-radius:3px;background:var(--fg3);margin:0 auto 6px}

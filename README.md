@@ -67,6 +67,7 @@ shortcuts: [flash, honk, climate, windows, frunk]
 menu: [lock, sentry, climate, defrost, seat_fl, seat_fr, charge, charge_port, charge_limit, frunk, trunk, windows, flash, honk]
 height: 720px                        # optional, full height by default
 confirm: true                        # ask before unlock / frunk / trunk
+feedback: true                       # false hides "Suggest an idea" and "Report a problem" at the end of the menu
 entities:                            # optional overrides
   battery: sensor.my_car_battery
 ```
@@ -115,6 +116,12 @@ entities:
   cable: binary_sensor.my_car_charge_cable    # on/off sensor, not the charge port door
   location: device_tracker.my_car_location   # home / not_home
 ```
+
+## Ideas and problems
+
+At the end of the controls menu there are two links, **Suggest an idea** and **Report a problem**. They open a form on GitHub with the card version already filled in (for problems also the 3D model, the integration, the Home Assistant version and the browser or app). The card sends nothing by itself: you see everything first and you decide whether to submit it. Your car's name, licence plate, location and entity names are not included.
+
+You can also [open the forms here](https://github.com/diogopires21-alt/garage-for-tesla/issues/new/choose).
 
 ## Credits
 

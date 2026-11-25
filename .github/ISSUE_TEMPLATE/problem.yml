@@ -1,0 +1,36 @@
+name: Report a problem
+description: Something in the card is wrong or not working
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping! English or Portuguese, as you prefer. *(Podes escrever em português.)*
+        This page is public: please leave out your licence plate, VIN and location.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, and what did the card show?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: false
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot (optional)
+      description: Drag or paste an image here.
+    validations:
+      required: false
+  - type: textarea
+    id: info
+    attributes:
+      label: Card details
+      description: Filled in by the card. You can change or delete anything here.
+    validations:
+      required: false

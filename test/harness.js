@@ -112,7 +112,7 @@ function setup() {   // (re)cria as entidades da integração escolhida
   for (const k in states) delete states[k]; for (const k in entities) delete entities[k];
   for (const [id, tk, st, attrs] of mkE()) {
     states[id] = { entity_id: id, state: st, attributes: attrs, last_changed: '', last_updated: '' };
-    entities[id] = { entity_id: id, device_id: DEV, translation_key: tk, platform: tk ? 'tessie' : 'tesla_custom' };
+    entities[id] = { entity_id: id, device_id: DEV, translation_key: tk, platform: CUSTOM ? 'tesla_custom' : 'tessie' };
   }
 }
 setup();
@@ -123,7 +123,7 @@ window.__calls = log;
 const card = document.createElement('garage-for-tesla-card');
 let hass;
 function push() {
-  hass = { states: { ...states }, entities, devices: { [DEV]: { id: DEV, name: 'K.I.T.T.', name_by_user: q.get('name') || 'K.I.T.T.', manufacturer: 'Tesla', model: 'Model 3' } },
+  hass = { states: { ...states }, entities, config: { version: '2026.11.2' }, devices: { [DEV]: { id: DEV, name: 'K.I.T.T.', name_by_user: q.get('name') || 'K.I.T.T.', manufacturer: 'Tesla', model: 'Model 3' } },
     locale: { language: q.get('lang') || 'pt-PT' }, language: q.get('lang') || 'pt-PT', themes: { darkMode: q.get('theme') !== 'light' },
     formatEntityState: s => s.state === 'home' ? 'Casa' : s.state,
     callService: async (d, s, data) => {
@@ -151,13 +151,33 @@ function push() {
   card.hass = hass;
 }
 extra = await glbFor(MODEL);
-card.setConfig({ car_model: MODEL, color: q.get('color') || 'pearl_white', interior: q.get('int') || 'white', theme: q.get('theme') || 'auto', ...extra, ...(q.get('h') ? { height: q.get('h') } : {}) });
+card.setConfig({ car_model: MODEL, color: q.get('color') || 'pearl_white', interior: q.get('int') || 'white', theme: q.get('theme') || 'auto', ...extra, ...(q.get('fb') === '0' ? { feedback: false } : {}), ...(q.get('nocar') ? { device_id: 'none' } : {}), ...(q.get('h') ? { height: q.get('h') } : {}) });
 push();
 document.getElementById('app').appendChild(card);
 window.__card = card;
 
 // barra de demonstração (só no mockup publicado)
 if (demo) {
+  // imitação dos formulários de .github/ISSUE_TEMPLATE (os verdadeiros só existem depois de publicados)
+  const FORMS = {
+    'problem.yml': { name: 'Report a problem', intro: 'Thanks for helping!', f: [['What happened? *', 'What did you do, and what did the card show?', 4], ['What did you expect?', '', 2], ['Screenshot (optional)', 'Drag or paste an image here.', 2]] },
+    'suggestion.yml': { name: 'Suggest an idea', intro: 'Thanks for the idea!', f: [['What would you like to see? *', '', 5]] },
+  };
+  card.shadowRoot.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('.fb a'); if (!a) return;
+    e.preventDefault();
+    const u = new URL(a.href), f = FORMS[u.searchParams.get('template')], dk = !document.body.classList.contains('light');
+    const C = dk ? { bg: '#16181d', fg: '#e6e6e6', s: '#9aa0a8', l: '#343a43', i: '#0e1014' } : { bg: '#fff', fg: '#1b1d20', s: '#5b626b', l: '#cfd4da', i: '#fff' };
+    const ta = (rows, v) => { const t = document.createElement('textarea'); t.rows = rows; t.value = v || ''; t.style.cssText = `width:100%;box-sizing:border-box;margin-top:6px;padding:8px 10px;border-radius:8px;border:1px solid ${C.l};background:${C.i};color:${C.fg};font:14px/1.45 inherit;font-family:inherit;resize:vertical`; return t; };
+    const o = document.createElement('div'); o.id = 'fbmock'; o.style.cssText = 'position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.55);overflow:auto;padding:24px 16px;box-sizing:border-box';
+    const p = document.createElement('div'); p.style.cssText = `max-width:640px;margin:0 auto;padding:20px;box-sizing:border-box;border-radius:14px;background:${C.bg};color:${C.fg};font-size:14px;line-height:1.45`;
+    p.innerHTML = `<div style="padding:8px 12px;border-radius:8px;margin-bottom:16px;background:rgba(255,159,10,.18);font-size:13px">Imitação só para o protótipo: no cartão a sério abre o formulário no GitHub. Nada é enviado daqui.</div><h2 style="margin:0 0 4px;font-size:20px">${f.name}</h2><p style="margin:0 0 16px;color:${C.s}">${f.intro} English or Portuguese, as you prefer. <i>(Podes escrever em português.)</i><br>This page is public: please leave out your licence plate, VIN and location.</p>`;
+    const add = (l, d, t) => { const w = document.createElement('label'); w.style.cssText = 'display:block;margin-bottom:16px'; w.innerHTML = `<b>${l}</b>${d ? `<div style="color:${C.s};font-size:13px">${d}</div>` : ''}`; w.appendChild(t); p.appendChild(w); };
+    add('Title *', '', ta(1)); f.f.forEach(([l, d, r]) => add(l, d, ta(r)));
+    const info = u.searchParams.get('info') || ''; add('Card details', 'Filled in by the card. You can change or delete anything here.', ta(info.split('\n').length, info));
+    const b = document.createElement('button'); b.textContent = 'Fechar'; b.style.cssText = `width:100%;height:44px;border:0;border-radius:10px;font:600 15px inherit;font-family:inherit;background:${C.fg};color:${C.bg};cursor:pointer`; b.onclick = () => o.remove(); p.appendChild(b);
+    o.appendChild(p); document.body.appendChild(o);
+  });
   const C = { model: MODEL, theme: 'dark', color: 'pearl_white', interior: 'white', chg: false, mobile: false };
   const PT = { language: 'pt-PT', locale: { language: 'pt-PT' } };
   const colOpts = () => MODELS[C.model].colors.map(k => `<option value="${k}"${k === C.color ? ' selected' : ''}>${t(PT, k)}</option>`).join('');

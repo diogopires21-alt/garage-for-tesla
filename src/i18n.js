@@ -15,7 +15,7 @@ const STR = {
     model_credit: '3D model', failed: 'Command failed', hand_trunk: 'The trunk has to be closed by hand.', seat_heat: 'Heat', seat_cool: 'Ventilate', seat_mode: 'Heat or ventilate', done_ok: 'Done', temp: 'Temperature',
     s_off: 'Off', s_low: 'Low', s_med: 'Medium', s_high: 'High', amps: 'A',
     ed_device: 'Car', ed_car_model: '3D model', ed_interior: 'Interior', int_white: 'White', int_black: 'Black', ed_name: 'Name (optional)', ed_color: 'Paint colour', ed_theme: 'Theme', ed_shortcuts: 'Shortcuts (bottom row)', ed_menu: 'Controls in the menu',
-    ed_auto: 'Follow Home Assistant', ed_light: 'Light', ed_dark: 'Dark', ed_height: 'Height (optional, e.g. 720px)',
+    ed_auto: 'Follow Home Assistant', ed_light: 'Light', ed_dark: 'Dark', ed_height: 'Height (optional, e.g. 720px)', ed_feedback: 'Show "Suggest an idea" and "Report a problem"', fb_idea: 'Suggest an idea', fb_bug: 'Report a problem',
     pearl_white: 'Pearl White', stealth_grey: 'Stealth Grey', quicksilver: 'Quicksilver', diamond_black: 'Diamond Black', solid_black: 'Solid Black', ultra_red: 'Ultra Red', deep_blue: 'Deep Blue', marine_blue: 'Marine Blue', red_multicoat: 'Red Multi-Coat', midnight_silver: 'Midnight Silver', silver_metallic: 'Silver Metallic', glacier_blue: 'Glacier Blue', frost_blue: 'Frost Blue', coastal_blue: 'Coastal Blue', midnight_cherry: 'Midnight Cherry Red',
   },
   pt: {
@@ -34,7 +34,7 @@ const STR = {
     model_credit: 'Modelo 3D', failed: 'O comando falhou', hand_trunk: 'A bagageira tem de ser fechada à mão.', seat_heat: 'Aquecer', seat_cool: 'Ventilar', seat_mode: 'Aquecer ou ventilar', done_ok: 'Feito', temp: 'Temperatura',
     s_off: 'Desligado', s_low: 'Baixo', s_med: 'Médio', s_high: 'Alto', amps: 'A',
     ed_device: 'Carro', ed_car_model: 'Modelo 3D', ed_interior: 'Interior', int_white: 'Branco', int_black: 'Preto', ed_name: 'Nome (opcional)', ed_color: 'Cor da pintura', ed_theme: 'Tema', ed_shortcuts: 'Atalhos (fila de baixo)', ed_menu: 'Controlos no menu',
-    ed_auto: 'Igual ao Home Assistant', ed_light: 'Claro', ed_dark: 'Escuro', ed_height: 'Altura (opcional, ex.: 720px)',
+    ed_auto: 'Igual ao Home Assistant', ed_light: 'Claro', ed_dark: 'Escuro', ed_height: 'Altura (opcional, ex.: 720px)', ed_feedback: 'Mostrar "Dar sugestão" e "Reportar problema"', fb_idea: 'Dar sugestão', fb_bug: 'Reportar problema',
     pearl_white: 'Branco Pérola', stealth_grey: 'Cinzento Stealth', quicksilver: 'Quicksilver', diamond_black: 'Preto Diamante', solid_black: 'Preto Sólido', ultra_red: 'Vermelho Ultra', deep_blue: 'Azul Profundo', marine_blue: 'Azul Marinho', red_multicoat: 'Vermelho Multicamada', midnight_silver: 'Prateado Meia-Noite', silver_metallic: 'Prateado Metalizado', glacier_blue: 'Azul Glaciar', frost_blue: 'Azul Gelo', coastal_blue: 'Azul Costeiro', midnight_cherry: 'Vermelho Cereja Meia-Noite',
   },
 };

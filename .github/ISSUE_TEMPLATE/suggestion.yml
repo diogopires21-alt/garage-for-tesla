@@ -1,0 +1,22 @@
+name: Suggest an idea
+description: Something you would like to see in the card
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! English or Portuguese, as you prefer. *(Podes escrever em português.)*
+        This page is public: please leave out your licence plate, VIN and location.
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to see?
+    validations:
+      required: true
+  - type: textarea
+    id: info
+    attributes:
+      label: Card details
+      description: Filled in by the card. You can change or delete anything here.
+    validations:
+      required: false

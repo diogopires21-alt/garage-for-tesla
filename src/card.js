@@ -3,8 +3,9 @@ import { SLOTS, SECTIONS, DEFAULT_SHORTCUTS, HIDDEN_BY_DEFAULT, TAG_KEYS, COLORS
 import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
+import { REPO, client, feedbackUrl } from './feedback.js';
 
-export const VERSION = '1.2.1';
+export const VERSION = '1.3.0';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -188,7 +189,7 @@ class GarageForTeslaCard extends HTMLElement {
     if (this._scene && !this._scene.failed) { this._scene.setTheme(dark); this._scene.setPaint(paint); this._scene.setInterior(c.interior === 'black' ? 'black' : 'white'); this._scene.setFloorVivid && this._scene.setFloorVivid(!dark && !!bg.vivid); }
 
     if (!this._device || !Object.keys(this._map).length) {
-      this.$.menu.innerHTML = `<div class="empty">${esc(this._t('no_car'))}</div>`; this._structKey = 'empty';
+      if (this._structKey !== 'empty') { this._structKey = 'empty'; this.$.menu.innerHTML = `<div class="empty">${esc(this._t('no_car'))}</div>`; this._feedback(this.$.menu); }
       this.$.name.textContent = c.name || 'Tesla';
       return;
     }
@@ -397,10 +398,21 @@ class GarageForTeslaCard extends HTMLElement {
       ks.forEach(k => this._rows.push(this._row(grp, k)));
       menu.appendChild(wrap);
     }
+    this._feedback(menu);
     const cr = document.createElement('div'); cr.className = 'credit';
     const mc = modelInfo(this._config.car_model).credit;
     cr.innerHTML = `Garage for Tesla ${VERSION} · ${lang(this._hass) === 'pt' ? 'Sem ligação à Tesla, Inc.' : 'Not affiliated with Tesla, Inc.'}<br>${esc(this._t('model_credit'))}: <a href="${esc(mc.url)}" target="_blank" rel="noopener">“${esc(mc.title)}”</a> · ${esc(mc.author)} · <a href="${esc(mc.licenseUrl)}" target="_blank" rel="noopener">${esc(mc.license)}</a>`;
     menu.appendChild(cr);
+  }
+
+  // sugestões e problemas: duas ligações no fim do menu, que abrem um formulário no GitHub
+  _feedback(menu) {
+    if (this._config.feedback === false) return;
+    const h = this._hass, el = document.createElement('div'); el.className = 'fb';
+    const plats = [...new Set(Object.keys(SLOTS).map(k => this._ent(k)).map(id => id && h.entities && h.entities[id] && h.entities[id].platform).filter(Boolean))];
+    const d = { version: VERSION, model: modelInfo(this._config.car_model).name, integration: plats.join(', '), ha: h.config && h.config.version, client: client() };
+    el.innerHTML = [['idea', 'mdi:lightbulb-outline'], ['bug', 'mdi:bug-outline']].map(([k, i]) => `<a data-fb="${k}" href="${esc(feedbackUrl(k, d))}" target="_blank" rel="noopener"><ha-icon icon="${i}"></ha-icon>${esc(this._t('fb_' + k))}</a>`).join('');
+    menu.appendChild(el);
   }
 
   _row(grp, k) {
@@ -581,6 +593,6 @@ class GarageForTeslaCard extends HTMLElement {
 if (!customElements.get('garage-for-tesla-card')) customElements.define('garage-for-tesla-card', GarageForTeslaCard);
 window.customCards = window.customCards || [];
 if (!window.customCards.some(c => c.type === 'garage-for-tesla-card')) {
-  window.customCards.push({ type: 'garage-for-tesla-card', name: 'Garage for Tesla', description: '3D dashboard for your Tesla (Tessie, Teslemetry, Tesla Fleet, Tesla Custom).', preview: false, documentationURL: 'https://github.com/' });
+  window.customCards.push({ type: 'garage-for-tesla-card', name: 'Garage for Tesla', description: '3D dashboard for your Tesla (Tessie, Teslemetry, Tesla Fleet, Tesla Custom).', preview: false, documentationURL: REPO });
 }
 console.info(`%c GARAGE FOR TESLA %c ${VERSION} `, 'background:#111;color:#fff;border-radius:4px 0 0 4px;padding:2px 6px', 'background:#e31937;color:#fff;border-radius:0 4px 4px 0;padding:2px 6px');
