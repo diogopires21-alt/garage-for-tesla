@@ -30,15 +30,18 @@ The card does not log in to Tesla. It reads the entities that your Tesla integra
 
 If something isn't detected, you can point the card to the right entity with `entities:` (see below).
 
+<!-- ha-marketplace:exclude-start -->
 ## Install
 
-**Home Assistant 2026.11 or newer (Marketplace)**
+**Home Assistant 2026.11 or newer**
 
-1. Settings → Marketplace → **Add from link**
-2. Paste `https://github.com/diogopires21-alt/garage-for-tesla` and install **Garage for Tesla**.
-3. Reload the browser when asked.
+1. Settings → Marketplace → search for **Garage for Tesla** and install it.
+2. Reload the browser when asked.
 
-**Older versions (HACS)**: HACS → ⋮ → Custom repositories → add the link above as *Dashboard*.
+Not in the search results yet? Settings → Marketplace → **Add from link** and paste `https://github.com/diogopires21-alt/garage-for-tesla`.
+
+**Older versions of Home Assistant**: the card is also in the community store that the Marketplace replaced. Search for **Garage for Tesla** under *Dashboard*.
+<!-- ha-marketplace:exclude-end -->
 
 ## Add it to a dashboard
 
