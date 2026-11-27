@@ -22,6 +22,7 @@ class GarageForTeslaCardEditor extends HTMLElement {
         { name: 'interior', selector: { select: { mode: 'dropdown', options: [{ value: 'white', label: t(h, 'int_white') }, { value: 'black', label: t(h, 'int_black') }] } } },
         { name: 'theme', selector: { select: { mode: 'dropdown', options: [{ value: 'auto', label: t(h, 'ed_auto') }, { value: 'light', label: t(h, 'ed_light') }, { value: 'dark', label: t(h, 'ed_dark') }] } } },
       ] },
+      { name: 'charger', selector: { select: { mode: 'dropdown', options: ['plugged', 'always', 'off'].map(k => ({ value: k, label: t(h, 'wc_' + k) })) } } },
       { name: 'shortcuts', selector: { select: { multiple: true, mode: 'list', options: actions.map(opt) } } },
       { name: 'menu', selector: { select: { multiple: true, mode: 'list', options: actions.filter(k => k === 'climate' || !sc.includes(k)).map(opt) } } },
       { name: 'height', selector: { text: {} } },
@@ -39,6 +40,7 @@ class GarageForTeslaCardEditor extends HTMLElement {
       return (c.device_id ? '' : t(h, 'ed_auto_car') + ': ') + txt + (isTeslaMate(h, id) ? ' · ' + t(h, 'ed_readonly') : '');
     }
     if (s.name === 'teslamate_device_id') return t(h, 'ed_teslamate_help');
+    if (s.name === 'charger') return t(h, 'ed_charger_help');
     return '';
   }
 
@@ -57,7 +59,7 @@ class GarageForTeslaCardEditor extends HTMLElement {
       this.appendChild(this._form);
     }
     const h = this._hass, dev = this._config.device_id || findTeslaVehicle(h), found = detectEntities(h, dev);
-    const data = Object.assign({ car_model: 'model3_highland', color: 'pearl_white', interior: 'white', theme: 'auto', feedback: true }, this._config);
+    const data = Object.assign({ car_model: 'model3_highland', color: 'pearl_white', interior: 'white', theme: 'auto', charger: 'plugged', feedback: true }, this._config);
     if (!data.shortcuts) data.shortcuts = DEFAULT_SHORTCUTS.filter(k => found[k]);
     if (data.menu) data.menu = data.menu.filter(k => !TAG_KEYS.includes(k) && (k === 'climate' || !data.shortcuts.includes(k)));
     if (!data.menu) data.menu = Object.keys(SLOTS).filter(k => SLOTS[k].kind === 'action' && found[k] && !(HIDDEN_BY_DEFAULT.includes(k) && !(k === 'steering_level' && !found.steering_heat)) && !TAG_KEYS.includes(k) && (k === 'climate' || !data.shortcuts.includes(k)));

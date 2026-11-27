@@ -235,6 +235,8 @@ export class CarScene {
     // bagageira aberta: o mesmo ponto laranja, no sítio da etiqueta
     const td = G.trunkDot = pd.clone(); td.material = pd.material.clone(); td.position.copy(G.anchors.trunk.p); scene.add(td);   // desenhado por cima do farolim (sem teste de profundidade)
     this._applyPaint(); this._applyTheme();
+    if (G.wcRoot) this._wcPlace();
+    if (G.scRoot) this._scPlace();
     this.renderer.shadowMap.needsUpdate = true;
     G.ready = true; G.intro = performance.now();
     this.opts.onReady && this.opts.onReady();
@@ -580,6 +582,180 @@ export class CarScene {
 
   setCarState(s) { Object.assign(this.state, s); }
 
+  // ---------- Wall Connector num pedestal (desenhado de raiz: models/tools/wallconnector.py) ----------
+  // Fica ao lado da traseira esquerda, virado para a câmara. Com o cabo ligado, a pega entra a direito na porta de carga
+  // (o triângulo escuro do farolim no lado do carro) e o cabo cai ao chão; sem cabo, a pega fica no encaixe e o cabo enrolado.
+  // s = { show, connected, led: 'standby' | 'charge' | 'blue' | 'error' }
+  setWallConnector(s) {
+    const o = this.state.wc || {}; this.state.wc = s;
+    if (s.show && !this.G.wcReq) this._loadWC();
+    if (o.show !== s.show || o.connected !== s.connected) this._wcApply();
+  }
+  _loadWC() {
+    const G = this.G; G.wcReq = true;
+    const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+    const ok = g => { G.wcRoot = g.scene; this._wcPlace(); }, bad = e => console.error('Garage for Tesla: wall connector', e);
+    const b64 = typeof window !== 'undefined' && window.GFT_WC_GLB_B64;   // mockup publicado: o .glb vai embutido (o alojamento não serve .glb)
+    if (b64) loader.parse(Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer, '', ok, bad);
+    else if (this.opts.wcUrl) loader.load(this.opts.wcUrl, ok, undefined, bad);
+  }
+  // porta de carga para a pega: faces do farolim viradas para o lado esquerdo, na metade de cima e à frente da esquina
+  _wcPortSpot() {
+    const G = this.G, box = G.box, L = box.max.x - box.min.x, H = box.max.y - box.min.y, W = box.max.z - box.min.z;
+    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), n = new THREE.Vector3(), c = new THREE.Vector3();
+    const acc = new THREE.Vector3(), nacc = new THREE.Vector3(); let area = 0;
+    // opts.wcPortMat: modelos em que a parte lateral do farolim é outra peça (Model Y 2025+: a lente "GlassLamp"); aí conta a peça toda
+    const pm = this.opts.wcPortMat || 'TailLight', fxMin = this.opts.wcPortMat ? 0 : .075;
+    (G.mats[pm] || []).forEach(o => {
+      const p = o.geometry.attributes.position, idx = o.geometry.index, cnt = idx ? idx.count : p.count, at = i => idx ? idx.getX(i) : i;
+      for (let i = 0; i + 2 < cnt; i += 3) {
+        A.fromBufferAttribute(p, at(i)).applyMatrix4(o.matrixWorld); B.fromBufferAttribute(p, at(i + 1)).applyMatrix4(o.matrixWorld); C.fromBufferAttribute(p, at(i + 2)).applyMatrix4(o.matrixWorld);
+        n.subVectors(B, A).cross(C.clone().sub(A)); const ar = n.length() / 2; if (!ar) continue; n.normalize();
+        c.copy(A).add(B).add(C).divideScalar(3);
+        const fx = (c.x - box.min.x) / L, fy = (c.y - box.min.y) / H, fz = (c.z - box.min.z) / W;
+        if (fz < .5 && fx < .2 && fx > fxMin && fy > .5 && n.z < -.85) { acc.addScaledVector(c, ar); nacc.addScaledVector(n, ar); area += ar; }
+      }
+    });
+    if (!area) return { p: G.anchors.port.p.clone(), n: G.anchors.port.n.clone().setY(0).normalize() };
+    const nn = nacc.setY(0).normalize(), p = acc.divideScalar(area);
+    // acerto por modelo (opts.wcPort = [para a frente, para cima] em metros, visto pelo Diogo): anda ao longo da superfície
+    // (na horizontal, perpendicular à normal, para o lado da frente do carro) e na vertical
+    const off = this.opts.wcPort;
+    if (off) {
+      const fwd = new THREE.Vector3(-nn.z, 0, nn.x); if (fwd.x < 0) fwd.negate();
+      p.addScaledVector(fwd, off[0]); p.y += off[1];
+    }
+    return { p: p.addScaledVector(nn, .002), n: nn };
+  }
+  _wcPlace() {
+    const G = this.G, R = G.wcRoot; if (!R || !G.box || G.wc) return;
+    const box = G.box, nd = k => R.getObjectByName(k);
+    const wc = nd('wallConnector'), handle = nd('handle'), coil = nd('coil'), led = nd('led'), body = nd('handleBody'), face = nd('wcFace');
+    if (!wc || !handle || !coil || !led || !body || !face) { console.error('Garage for Tesla: wall connector model incomplete'); return; }
+    R.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    // ao lado da traseira esquerda (a 42 cm do carro), virado para a frente e 28° para o carro: a câmara do cartão vê-lhe a frente
+    R.position.set(box.min.x + .12, 0, box.min.z - .42); R.rotation.y = Math.atan2(.88, .47);
+    this.scene.add(R); R.updateMatrixWorld(true);
+    const lbox = o => { const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); return g.boundingBox.clone().applyMatrix4(o.matrix); };
+    // barra de luz: 7 segmentos (como na Casa 3D); o 0 é o de cima
+    const lb = lbox(led), lx = (lb.min.x + lb.max.x) / 2, len = lb.max.y - lb.min.y, leds = [];
+    for (let i = 0; i < 7; i++) {
+      const s = new THREE.Mesh(new THREE.BoxGeometry(.0045, len / 7 * .82, .002), new THREE.MeshBasicMaterial({ color: 0x2a2f33, toneMapped: false }));
+      s.position.set(lx, lb.max.y - (i + .5) * len / 7, lb.max.z + .0004); wc.add(s); leds.push(s);
+    }
+    led.visible = false;
+    const fb = lbox(face), hb = lbox(body);
+    G.wc = { R, wc, handle, coil, leds, cin: new THREE.Vector3(0, fb.min.y + .004, .05), cout: new THREE.Vector3(0, hb.min.y, 0),
+      home: { parent: handle.parent, p: handle.position.clone(), q: handle.quaternion.clone(), s: handle.scale.clone() }, port: G.portSpot ||= this._wcPortSpot(), mat: coil.material };
+    this._wcApply();
+  }
+  _wcApply() {
+    const G = this.G, W = G.wc, s = this.state.wc || {}; if (!W) return;
+    W.R.visible = !!s.show;
+    const con = !!(s.show && s.connected), h = W.handle;
+    if (W.tube) { this.scene.remove(W.tube); W.tube.geometry.dispose(); W.tube = null; }
+    if (con) {
+      // pega a direito na porta (6° para baixo), com a cabeça da ficha (5 cm) dentro da porta
+      const d = W.port.n.clone().add(new THREE.Vector3(0, -.06, 0)).normalize();
+      this.scene.attach(h); h.scale.copy(W.home.s);
+      h.position.copy(W.port.p).addScaledVector(d, -.05); h.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().negate());
+      h.updateMatrixWorld(true); W.R.updateMatrixWorld(true);
+      const cin = W.wc.localToWorld(W.cin.clone()), cout = h.localToWorld(W.cout.clone()), FY = .0115;
+      const toC = cout.clone().sub(cin).setY(0).normalize(), side = new THREE.Vector3(-toC.z, 0, toC.x), nH = W.port.n;
+      const mid = cin.clone().add(cout).multiplyScalar(.5), V = (x, y, z) => new THREE.Vector3(x, y, z);
+      const pts = [cin, cin.clone().add(V(0, -.22, 0)), V(cin.x, .18, cin.z).addScaledVector(toC, .05), V(cin.x, FY, cin.z).addScaledVector(toC, .22),
+        V(mid.x, FY, mid.z).addScaledVector(side, .12), V(cout.x, FY, cout.z).addScaledVector(nH, .30).addScaledVector(side, -.05),
+        V(cout.x, .25, cout.z).addScaledVector(nH, .17), cout.clone().addScaledVector(d, .12).add(V(0, -.10, 0)), cout.clone().addScaledVector(d, .06), cout];
+      const tube = W.tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'centripetal'), 220, .0105, 8, false), W.mat);
+      tube.castShadow = true; tube.receiveShadow = true; this.scene.add(tube);
+    } else if (h.parent !== W.home.parent) {
+      W.home.parent.add(h); h.position.copy(W.home.p); h.quaternion.copy(W.home.q); h.scale.copy(W.home.s);
+    }
+    W.coil.visible = !con;
+    this.renderer.shadowMap.needsUpdate = true; G.reflNeed = 3;
+  }
+  // ---------- Supercharger V4 (desenhado de raiz: models/tools/supercharger.py) ----------
+  // Só nas cargas rápidas, no mesmo sítio do Wall Connector (Diogo, 27/11/2026). O cabo (3 m) sai no topo do lado do posto
+  // virado para o carro e vai à porta de carga; a pega entra a direito, como no Wall Connector. s = { show }
+  setSupercharger(s) {
+    const o = this.state.sc || {}; this.state.sc = s;
+    if (s.show && !this.G.scReq) this._loadSC();
+    if (o.show !== s.show) this._scApply();
+  }
+  _loadSC() {
+    const G = this.G; G.scReq = true;
+    const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+    const ok = g => { G.scRoot = g.scene; this._scPlace(); }, bad = e => console.error('Garage for Tesla: supercharger', e);
+    const b64 = typeof window !== 'undefined' && window.GFT_SC_GLB_B64;
+    if (b64) loader.parse(Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer, '', ok, bad);
+    else if (this.opts.scUrl) loader.load(this.opts.scUrl, ok, undefined, bad);
+  }
+  _scPlace() {
+    const G = this.G, R = G.scRoot; if (!R || !G.box || G.sc) return;
+    const box = G.box, nd = k => R.getObjectByName(k);
+    const handle = nd('scHandle'), body = nd('scHandleBody'), cable = nd('scCable'), exit = nd('scExit');
+    if (!handle || !body || !cable || !exit) { console.error('Garage for Tesla: supercharger model incomplete'); return; }
+    R.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    // [a partir da traseira, para fora do carro, ângulo da frente] (m, m, graus): o ângulo do Wall Connector, meio virado
+    // para o carro, mas a 80 cm (é mais largo) (Diogo, 27/11/2026: "é o ângulo em relação ao carro, não a distância")
+    const sp = this.opts.scSpot || [.05, .8, 62];
+    R.position.set(box.min.x + sp[0], 0, box.min.z - sp[1]); R.rotation.y = sp[2] * Math.PI / 180; R.scale.x = 1;
+    this.scene.add(R); R.updateMatrixWorld(true);
+    const port = G.portSpot ||= this._wcPortSpot();
+    // o cabo sai do lado do posto mais perto da porta: se for o outro, o posto fica espelhado
+    const ex = exit.getWorldPosition(new THREE.Vector3()), mx = R.worldToLocal(ex.clone()); mx.x = -mx.x; R.localToWorld(mx);
+    if (mx.distanceTo(port.p) < ex.distanceTo(port.p)) {
+      R.scale.x = -1;
+      const logo = nd('scLogo'); if (logo) logo.scale.x = -logo.scale.x;   // o lettering "TESLA" (centrado) não fica ao contrário
+      R.updateMatrixWorld(true);
+    }
+    const g = body.geometry; if (!g.boundingBox) g.computeBoundingBox(); const hb = g.boundingBox.clone().applyMatrix4(body.matrix);
+    const eb = new THREE.Box3().setFromObject(exit);
+    G.sc = { R, handle, cable, exit, top: new THREE.Vector3((eb.min.x + eb.max.x) / 2, eb.min.y + .02, (eb.min.z + eb.max.z) / 2), cout: new THREE.Vector3(0, hb.min.y, 0),
+      home: { parent: handle.parent, p: handle.position.clone(), q: handle.quaternion.clone(), s: handle.scale.clone() }, port, mat: cable.material };
+    this._scApply();
+  }
+  _scApply() {
+    const G = this.G, Sc = G.sc, s = this.state.sc || {}; if (!Sc) return;
+    Sc.R.visible = !!s.show;
+    const h = Sc.handle;
+    if (Sc.tube) { this.scene.remove(Sc.tube); Sc.tube.geometry.dispose(); Sc.tube = null; }
+    if (s.show) {
+      const d = Sc.port.n.clone().add(new THREE.Vector3(0, -.06, 0)).normalize();
+      const sw = h.getWorldScale(new THREE.Vector3());
+      this.scene.attach(h); h.scale.set(Math.abs(sw.x), Math.abs(sw.y), Math.abs(sw.z));
+      h.position.copy(Sc.port.p).addScaledVector(d, -.05); h.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().negate());
+      h.updateMatrixWorld(true);
+      const top = Sc.top, cout = h.localToWorld(Sc.cout.clone()), V = (x, y, z) => new THREE.Vector3(x, y, z);
+      const out = top.clone().sub(Sc.R.position).setY(0).normalize(), mid = top.clone().add(cout).multiplyScalar(.5);
+      const low = Math.min(top.y, cout.y) - .5;
+      const pts = [top, top.clone().addScaledVector(out, .07).add(V(0, -.08, 0)), top.clone().addScaledVector(out, .12).add(V(0, -.45, 0)),
+        V(mid.x, low, mid.z).addScaledVector(out, .1), cout.clone().addScaledVector(d, .18).add(V(0, -.16, 0)), cout.clone().addScaledVector(d, .07), cout];
+      const tube = Sc.tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'centripetal'), 200, .018, 10, false), Sc.mat);
+      tube.castShadow = true; tube.receiveShadow = true; this.scene.add(tube);
+    } else if (h.parent !== Sc.home.parent) {
+      Sc.home.parent.add(h); h.position.copy(Sc.home.p); h.quaternion.copy(Sc.home.q); h.scale.copy(Sc.home.s);
+    }
+    Sc.cable.visible = !s.show;
+    this.renderer.shadowMap.needsUpdate = true; G.reflNeed = 3;
+  }
+
+  // luzes do Wall Connector (manual da Tesla, igual à Casa 3D): verde em cima fixo = à espera; verde a correr = a carregar;
+  // azul fixo = ligado ao carro sem carregar; vermelho a piscar = falha
+  _wcLeds(t) {
+    const W = this.G.wc, s = this.state.wc; if (!W || !s || !s.show) return false;
+    const m = s.led || 'standby', off = [.16, .18, .2], G = [.24, .9, .5], B = [.23, .55, 1], R = [1, .23, .19], blink = Math.floor(t * 2) % 2 === 0;
+    W.leds.forEach((l, i) => {
+      let c = off, k = 1;
+      if (m === 'standby') { if (i === 0) c = G; }
+      else if (m === 'blue') { if (i === 3) c = B; }
+      else if (m === 'error') { if (i === 0 && blink) c = R; }
+      else { c = G; k = .3 + .7 * Math.max(0, Math.cos(2 * Math.PI * (i / 7 - (t % 1.4) / 1.4))); }
+      l.material.color.setRGB(c[0] * k, c[1] * k, c[2] * k);
+    });
+    return m === 'charge' || m === 'error';
+  }
+
   // Energia adicionada escrita no chão, ao lado do carro (pedido do Diogo, 24/11/2026): letra fina (Inter Light), branco suave no tema escuro.
   // Fica do lado do carro virado para a câmara e lê-se sempre da esquerda para a direita (troca de lado com um fade quando se roda o carro).
   _floorTextInit(box) {
@@ -779,6 +955,7 @@ export class CarScene {
       u.uLight.value.y = z; u.uDir.value = ph < 1 ? 1 : -1;
       this._underMask.value = u.uOn.value;
     }
+    if (this._wcLeds(t)) G.animating = true;
     this._floorTextFrame();
     if (fx.honk) {
       const e = (now - fx.honk) / 1000;

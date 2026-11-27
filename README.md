@@ -11,6 +11,7 @@ A 3D dashboard card for Home Assistant that puts your Tesla front and centre: a 
 - **3D car** you can rotate, with a reflective glass floor and a background that matches your paint colour.
 - **Information on the car itself**: lock state on the roof, frunk and trunk at each end, charging power at the charge port, tyre pressures on a top-down view, battery and range in the header.
 - **Live effects on the 3D car**: charging light under the car, energy added written on the floor next to the car while the cable is plugged in, Sentry Mode scan, open doors/frunk and low tyres blinking orange, heated seats and heated steering wheel blinking red, ventilated seats blinking blue.
+- **Charger next to the car**: a Wall Connector on a pedestal while charging at a normal (AC) charger, with the handle in the charge port and the light bar showing the state (green running while charging, blue when plugged in but not charging); a Supercharger V4 while fast charging. Option to show the Wall Connector always (cable coiled when unplugged) or no charger at all.
 - **Controls menu on the right**, grouped like iOS Settings: security, climate, charging, doors & windows, quick actions. You choose which ones appear.
 - **Shortcut row** under the car (lights, horn, climate, windows, frunk… you pick).
 - Light and dark mode (follows Home Assistant or set it yourself), Portuguese and English.
@@ -83,6 +84,7 @@ car_model: model3_highland           # model3_highland, model3_classic, modely_j
 color: pearl_white                   # only colours that exist for the chosen model (see below)
 interior: white                      # white or black
 theme: auto                          # auto (follow HA), light, dark
+charger: plugged                     # plugged (only while plugged in), always (Wall Connector also when unplugged), off
 shortcuts: [flash, honk, climate, windows, frunk]
 menu: [lock, sentry, climate, defrost, seat_fl, seat_fr, charge, charge_port, charge_limit, frunk, trunk, windows, flash, honk]
 height: 720px                        # optional, full height by default
@@ -117,6 +119,10 @@ The card finds these sensors by itself with Tessie, Teslemetry, Tesla Fleet and 
 | `time_to_full` | `sensor` | When charging ends: a date/time (`device_class: timestamp`) or minutes left (or hours, with unit `h`) |
 | `energy_added` | `sensor` | Energy added in this session (kWh), written on the floor next to the car while the cable is plugged in |
 | `cable` | `binary_sensor` | Charge cable plugged in: `on` = plugged, `off` = not plugged. **Not** `charge_port`: that one is the charge port door control (a `cover`) |
+| `fast_charger` | `binary_sensor` | Fast (DC) charging: `on` = fast. Shows the Supercharger instead of the Wall Connector |
+| `charger_type` | `sensor` | Charger type: `Supercharger`, CCS or CHAdeMO = fast; `ACSingleWireCAN` = Wall Connector |
+| `charger_current` | `sensor` | Current through the car's own charger (A). About 0 A while charging means fast charging |
+| `wall_connector` | `sensor` | Optional: the state sensor of your Wall Connector (Tesla Wall Connector integration). An `error` state turns its light red |
 | `odometer` | `sensor` | Odometer, with its unit |
 | `inside_temp`, `outside_temp` | `sensor` | Temperatures in °C or °F |
 | `tpms_fl`, `tpms_fr`, `tpms_rl`, `tpms_rr` | `sensor` | Tyre pressure (front left, front right, rear left, rear right), with its unit (bar or psi) |
@@ -154,6 +160,7 @@ You can also [open the forms here](https://github.com/diogopires21-alt/garage-fo
 
 Other:
 
+- Wall Connector, pedestal and Supercharger V4: made from scratch for this card (from Tesla's published dimensions), [MIT licence](LICENSE) like the code.
 - 3D engine: [three.js](https://threejs.org) (MIT).
 - Font for the energy on the floor: [Inter](https://github.com/rsms/inter) Light by The Inter Project Authors, [SIL Open Font License 1.1](third-party/Inter-OFL.txt) (only the characters it needs are embedded).
 - Code: [MIT licence](LICENSE). The 3D models and the font keep their own licences: see [third-party](third-party/README.md).

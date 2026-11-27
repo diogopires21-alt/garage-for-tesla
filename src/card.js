@@ -5,7 +5,7 @@ import './editor.js';
 import { CarScene } from './scene.js';
 import { REPO, client, feedbackUrl } from './feedback.js';
 
-export const VERSION = '1.4.0';
+export const VERSION = '1.5.0';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -124,6 +124,7 @@ class GarageForTeslaCard extends HTMLElement {
     try {
       const mi = modelInfo(this._config.car_model);
       this._scene = new CarScene(this.$.canvas, this._config.model_url || modelUrl(mi), { ...(mi.scene || {}), paintName: mi.paint, length: mi.length, buffer: this._config.model_buffer,
+        wcUrl: modelUrl({ file: 'garage-for-tesla-wallconnector.glb' }), scUrl: modelUrl({ file: 'garage-for-tesla-supercharger.glb' }),
         onReady: () => { this.$.loading.classList.add('done'); this.$.tags.classList.add('show'); this._syncScene(); },
         onError: () => { this.$.loading.textContent = 'Model failed to load'; },
         onFrame: () => this._placeTags(),
@@ -228,6 +229,35 @@ class GarageForTeslaCard extends HTMLElement {
     // energia adicionada, escrita no chão: a carregar e enquanto o cabo estiver ligado (pedido do Diogo, 24/11/2026)
     const ea = this._num('energy_added');
     this._scene.setFloorText && this._scene.setFloorText(plugged && ea != null ? '+' + this._fmt(ea, 1) + ' ' + (this._unit('energy_added') || 'kWh') : '');
+    // Carregador ao lado do carro (Diogo, 27/11/2026): Wall Connector nas cargas normais, Supercharger V4 nas rápidas.
+    // charger: plugged (por omissão, só com o cabo ligado) · always (também o Wall Connector com o cabo enrolado, sem cabo) · off.
+    // Luz vermelha do Wall Connector só com o sensor do próprio Wall Connector (entities: wall_connector).
+    const cm = this._config.charger || 'plugged', fast = plugged && this._fastCharge(charging);
+    const ws = this._ok('wall_connector'), err = !!(ws && /error|fault|falha/i.test(ws.state));
+    this._scene.setWallConnector && this._scene.setWallConnector({
+      show: cm === 'always' ? !fast : cm === 'off' ? false : !!plugged && !fast,
+      connected: !!plugged && !fast,
+      led: err ? 'error' : !plugged || fast ? 'standby' : charging ? 'charge' : 'blue',
+    });
+    this._scene.setSupercharger && this._scene.setSupercharger({ show: cm !== 'off' && fast });
+  }
+
+  // Carga rápida (corrente contínua, Supercharger)? 1) a integração diz (Teslemetry, Tesla Custom); 2) o tipo de carregador
+  // ("Supercharger"/CCS → rápida; "ACSingleWireCAN" = Wall Connector → normal); 3) a carregar com o carregador do próprio
+  // carro a 0 A (na carga rápida a energia não passa por ele); 4) potência acima de 22 kW.
+  _fastCharge(charging) {
+    const fp = this._ok('fast_charger'); if (fp) return fp.state === 'on';
+    const cab = this._ok('cable'), a = (cab && cab.attributes) || {};
+    if (a.fast_charger_present === true) return true;
+    const ty = this._ok('charger_type'), type = String(ty ? ty.state : a.fast_charger_type || '');
+    if (/supercharger|ccs|chademo|combo/i.test(type)) return true;
+    if (/singlewirecan/i.test(type)) return false;
+    if (!charging) return false;
+    const pw = this._ok('charge_power'), u = this._unit('charge_power');
+    let p = this._num('charge_power'); if (p != null && /^w$/i.test(u)) p /= 1000;
+    const cur = this._num('charger_current') ?? (pw && pw.attributes.charger_amps_actual != null ? parseFloat(pw.attributes.charger_amps_actual) : null);
+    if (cur != null && !isNaN(cur) && p != null && cur <= 1 && p > 3) return true;
+    return p != null && p > 22;
   }
 
   _chargeInfo() {

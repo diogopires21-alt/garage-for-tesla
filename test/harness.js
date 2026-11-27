@@ -72,12 +72,17 @@ const P = 'k_i_t_t_';
 // integ: tessie (por omissão) | custom (Tesla Custom) | teslamate (só TeslaMate) | fleet_tm (Tesla Fleet + TeslaMate)
 let INTEG = q.get('integ') || 'tessie', CUSTOM = INTEG === 'custom';   // no mockup muda com a opção "Integração"
 const TC_STATE = { charging: 'Charging', complete: 'Complete', stopped: 'Stopped', disconnected: 'Disconnected' };
-const FRONT_COOL_HEAT = ['Off', 'Heat Low', 'Heat Medium', 'Heat High', 'Auto', 'Cool Low', 'Cool Medium', 'Cool High'];
+// ?fast=1: carga rápida (Supercharger): o carregador do carro fica a 0 A e a potência é alta
+let FAST = q.get('fast') === '1';
+// Tesla Custom: o tipo de carregador vem nos atributos do sensor do cabo (como no HA do Diogo)
+const tcFast = on => ({ fast_charger_present: !!(on && FAST), fast_charger_brand: on ? 'Tesla' : '<invalid>', fast_charger_type: !on ? '<invalid>' : FAST ? 'Supercharger' : 'ACSingleWireCAN' });
+const FRONT_COOL_HEAT =['Off', 'Heat Low', 'Heat Medium', 'Heat High', 'Auto', 'Cool Low', 'Cool Medium', 'Cool High'];
 const mkE = () => [
   ['sensor.' + P + 'nivel_da_bateria', 'charge_state_usable_battery_level', q.get('bat') || '78', { unit_of_measurement: '%' }],
   ['sensor.' + P + 'autonomia_da_bateria', 'charge_state_battery_range', q.get('rng') || '412', { unit_of_measurement: 'km' }],
   ...(CUSTOM ? [] : [['sensor.' + P + 'a_carregar', 'charge_state_charging_state', q.get('chg') || 'disconnected', {}]]),
-  ['sensor.' + P + 'potencia_do_carregador', 'charge_state_charger_power', '10.8', { unit_of_measurement: 'kW' }],
+  ['sensor.' + P + 'potencia_do_carregador', 'charge_state_charger_power', FAST ? '148' : '10.8', { unit_of_measurement: 'kW' }],
+  ['sensor.' + P + 'corrente_do_carregador', 'charge_state_charger_actual_current', FAST ? '0' : '16', { unit_of_measurement: 'A' }],
   ['sensor.' + P + 'taxa_de_carregamento', 'charge_state_charge_rate', '62', { unit_of_measurement: 'km/h' }],
   CUSTOM ? ['sensor.' + P + 'energy_added', null, q.get('kwh') || '22.4', { unit_of_measurement: 'kWh' }] : ['sensor.' + P + 'energia_de_carga_adicionada', 'charge_state_charge_energy_added', q.get('kwh') || '22.4', { unit_of_measurement: 'kWh' }],
   // como o Tessie/Teslemetry/Tesla Fleet: hora de fim (timestamp); ?ttf=min → formato antigo em minutos
@@ -87,7 +92,7 @@ const mkE = () => [
     ? ['sensor.' + P + 'tempo_ate_a_carga_completa', 'charge_state_minutes_to_full_charge', '85', { unit_of_measurement: 'min' }]
     : ['sensor.' + P + 'tempo_ate_a_carga_completa', 'charge_state_minutes_to_full_charge', new Date(Date.now() + 59 * 60000 + 30000).toISOString().replace(/\.\d+Z$/, '+00:00'), { device_class: 'timestamp' }],
   CUSTOM
-    ? ['binary_sensor.' + P + 'charger', null, q.get('chg') && q.get('chg') !== 'disconnected' ? 'on' : 'off', { device_class: 'plug', charging_state: TC_STATE[q.get('chg') || 'disconnected'] || 'Disconnected' }]
+    ? ['binary_sensor.' + P + 'charger', null, q.get('chg') && q.get('chg') !== 'disconnected' ? 'on' : 'off', { device_class: 'plug', charging_state: TC_STATE[q.get('chg') || 'disconnected'] || 'Disconnected', ...tcFast(q.get('chg') && q.get('chg') !== 'disconnected') }]
     : ['binary_sensor.' + P + 'cabo_de_carregamento', 'charge_state_conn_charge_cable', q.get('chg') && q.get('chg') !== 'disconnected' ? 'on' : 'off', {}],
   ['sensor.' + P + 'odometro', 'vehicle_state_odometer', '23418', { unit_of_measurement: 'km' }],
   ['sensor.' + P + 'temperatura_interior', 'climate_state_inside_temp', '19.5', { unit_of_measurement: '°C' }],
@@ -107,7 +112,7 @@ const mkE = () => [
   ['binary_sensor.' + P + 'porta_da_frente_do_passageiro', 'vehicle_state_pf', q.get('doors') ? 'on' : 'off', {}],
   ['binary_sensor.' + P + 'porta_traseira_do_passageiro', 'vehicle_state_pr', q.get('doors') ? 'on' : 'off', {}],
   ['lock.' + P + 'fechadura', 'vehicle_state_locked', q.get('lock') || 'locked', {}],
-  ['switch.' + P + 'modo_sentinela', 'vehicle_state_sentry_mode', 'on', {}],
+  ['switch.' + P + 'modo_sentinela', 'vehicle_state_sentry_mode', q.get('sentry') === 'on' ? 'on' : 'off', {}],   // tudo desligado por omissão (pedido do Diogo, 27/11/2026); ?sentry=on liga
   ['switch.' + P + 'modo_valet', 'vehicle_state_valet_mode', 'off', {}],
   // ?integ=custom imita a Tesla Custom Integration: sem TURN_ON/TURN_OFF, só set_hvac_mode (issue #1); por omissão imita o Tessie
   q.get('integ') === 'custom'
@@ -117,11 +122,11 @@ const mkE = () => [
   // Tesla Custom (carros mais novos): sem interruptor do volante, só o nível (select), e bancos da frente com ventilação (opções Heat/Cool, com maiúsculas); sem translation_key
   ...(CUSTOM ? [
     ['select.' + P + 'heated_steering_wheel', null, q.get('wheel') ? 'High' : 'Off', { options: ['Off', 'Low', 'High', 'Auto'] }],
-    ['select.' + P + 'heated_seat_left', null, q.get('sfl') || 'Heat Low', { options: FRONT_COOL_HEAT }],
+    ['select.' + P + 'heated_seat_left', null, q.get('sfl') || 'Off', { options: FRONT_COOL_HEAT }],
     ['select.' + P + 'heated_seat_right', null, q.get('sfr') || 'Off', { options: FRONT_COOL_HEAT }],
   ] : [
     ['switch.' + P + 'aquecedor_do_volante', 'climate_state_steering_wheel_heater', q.get('wheel') ? 'on' : 'off', {}],
-    ['select.' + P + 'aquecedor_do_assento_esquerdo', 'climate_state_seat_heater_left', q.get('sfl') || 'low', { options: ['off', 'low', 'medium', 'high'] }],
+    ['select.' + P + 'aquecedor_do_assento_esquerdo', 'climate_state_seat_heater_left', q.get('sfl') || 'off', { options: ['off', 'low', 'medium', 'high'] }],
     ['select.' + P + 'aquecedor_do_assento_direito', 'climate_state_seat_heater_right', q.get('sfr') || 'off', { options: ['off', 'low', 'medium', 'high'] }],
     // Tessie/Teslemetry: ventilação dos bancos da frente numa entidade à parte
     ['select.' + P + 'ventilacao_do_assento_esquerdo', 'climate_state_seat_fan_front_left', q.get('cfl') || 'off', { options: ['off', 'low', 'medium', 'high'] }],
@@ -156,7 +161,8 @@ const mkTM = () => {
     ['sensor.' + TP + 'state', chg === 'charging' ? 'Charging' : 'Online', {}],
     ['sensor.' + TP + 'charging_state', { charging: 'Charging', complete: 'Complete', stopped: 'Stopped' }[chg] || 'Disconnected', {}],
     ['binary_sensor.' + TP + 'charging_state', chg === 'charging' ? 'on' : 'off', { device_class: 'battery_charging' }],
-    ['sensor.' + TP + 'charger_power', chg === 'charging' ? '11' : '0', { unit_of_measurement: 'kW' }],
+    ['sensor.' + TP + 'charger_power', chg === 'charging' ? (FAST ? '148' : '11') : '0', { unit_of_measurement: 'kW' }],
+    ['sensor.' + TP + 'charger_actual_current', chg === 'charging' && !FAST ? '16' : '0', { unit_of_measurement: 'A' }],
     ['sensor.' + TP + 'charge_energy_added', q.get('kwh') || '22.4', { unit_of_measurement: 'kWh' }],
     ['sensor.' + TP + 'charge_limit_soc', '80', { unit_of_measurement: '%' }],
     ['sensor.' + TP + 'time_to_full_charge', '1.25', { unit_of_measurement: 'h', device_class: 'duration' }],
@@ -183,7 +189,7 @@ const mkTM = () => {
     ['binary_sensor.' + TP + 'healthy', 'off', { device_class: 'problem' }],
     ['update.' + TP + 'update', 'off', {}],
     ['binary_sensor.' + TP + 'locked', q.get('lock') === 'unlocked' ? 'on' : 'off', { device_class: 'lock' }],
-    ['binary_sensor.' + TP + 'sentry_mode', 'on', {}],
+    ['binary_sensor.' + TP + 'sentry_mode', q.get('sentry') === 'on' ? 'on' : 'off', {}],
     ['binary_sensor.' + TP + 'is_climate_on', q.get('clim') && q.get('clim') !== 'off' ? 'on' : 'off', {}],
     ['binary_sensor.' + TP + 'frunk_open', q.get('frunk') ? 'on' : 'off', { device_class: 'door' }],
     ['binary_sensor.' + TP + 'trunk_open', q.get('trunk') ? 'on' : 'off', { device_class: 'door' }],
@@ -247,7 +253,7 @@ function push() {
 }
 extra = await glbFor(MODEL);
 const tmCfg = () => INTEG === 'fleet_tm' ? { teslamate_device_id: TM } : {};
-card.setConfig({ car_model: MODEL, color: q.get('color') || 'pearl_white', interior: q.get('int') || 'white', theme: q.get('theme') || 'auto', ...extra, ...tmCfg(), ...(q.get('fb') === '0' ? { feedback: false } : {}), ...(q.get('nocar') ? { device_id: 'none' } : {}), ...(q.get('h') ? { height: q.get('h') } : {}) });
+card.setConfig({ car_model: MODEL, color: q.get('color') || 'pearl_white', interior: q.get('int') || 'white', theme: q.get('theme') || 'auto', ...extra, ...(q.get('wc') ? { charger: q.get('wc') } : {}), ...tmCfg(), ...(q.get('fb') === '0' ? { feedback: false } : {}), ...(q.get('nocar') ? { device_id: 'none' } : {}), ...(q.get('h') ? { height: q.get('h') } : {}) });
 push();
 document.getElementById('app').appendChild(card);
 window.__card = card;
@@ -268,7 +274,7 @@ function showEditor() {
     edEl.addEventListener('config-changed', e => { edCfg = e.detail.config; card.setConfig({ ...edCfg, ...extra }); edEl.setConfig(edCfg); });
     edPanel.innerHTML = '<h3>Editor do cartão</h3>'; edPanel.appendChild(edEl);
   }
-  const base = { car_model: card._config.car_model, color: card._config.color, interior: card._config.interior || 'white', theme: card._config.theme, ...tmCfg() };
+  const base = { car_model: card._config.car_model, color: card._config.color, interior: card._config.interior || 'white', theme: card._config.theme, ...(card._config.charger ? { charger: card._config.charger } : {}), ...tmCfg() };
   edEl.hass = hass; edEl.setConfig(base);
 }
 if (q.get('ed')) { edPanel.style.display = ''; showEditor(); }
@@ -295,7 +301,7 @@ if (demo) {
     const b = document.createElement('button'); b.textContent = 'Fechar'; b.style.cssText = `width:100%;height:44px;border:0;border-radius:10px;font:600 15px inherit;font-family:inherit;background:${C.fg};color:${C.bg};cursor:pointer`; b.onclick = () => o.remove(); p.appendChild(b);
     o.appendChild(p); document.body.appendChild(o);
   });
-  const C = { model: MODEL, theme: 'dark', color: 'pearl_white', interior: 'white', chg: false, mobile: false };
+  const C = { model: MODEL, theme: 'dark', color: 'pearl_white', interior: 'white', chg: 'off', wc: 'plugged', mobile: false };
   const PT = { language: 'pt-PT', locale: { language: 'pt-PT' } };
   const colOpts = () => MODELS[C.model].colors.map(k => `<option value="${k}"${k === C.color ? ' selected' : ''}>${t(PT, k)}</option>`).join('');
   demo.innerHTML = `<b>Mockup · Garage for Tesla</b><span class="sp"></span>
@@ -303,7 +309,8 @@ if (demo) {
     <label>Tema <select id="dTheme"><option value="dark">Escuro</option><option value="light">Claro</option></select></label>
     <label>Cor <select id="dColor">${colOpts()}</select></label>
     <label>Interior <select id="dInt"><option value="white">Branco</option><option value="black">Preto</option></select></label>
-    <label><input type="checkbox" id="dChg"> A carregar</label>
+    <label>Carga <select id="dChg"><option value="off">Cabo desligado</option><option value="wc">A carregar (normal)</option><option value="stopped">Cabo ligado, sem carregar</option><option value="sc">A carregar (Supercharger)</option></select></label>
+    <label>Carregador <select id="dWc"><option value="plugged">Só com o cabo ligado</option><option value="always">Sempre</option><option value="off">Nunca</option></select></label>
     <label><input type="checkbox" id="dTw"> Aviso de pneu</label>
     <label><input type="checkbox" id="dDoor"> Porta aberta</label>
     <label><input type="checkbox" id="dUnl"> Destrancado</label>
@@ -312,22 +319,25 @@ if (demo) {
     <label><input type="checkbox" id="dEd"> Editor</label>`;
   const app = document.getElementById('app');
   const apply = () => {
-    card.setConfig({ car_model: C.model, color: C.color, interior: C.interior, theme: C.theme, ...extra, ...tmCfg() });
-    const chg = C.chg ? 'charging' : 'disconnected';
+    card.setConfig({ car_model: C.model, color: C.color, interior: C.interior, theme: C.theme, charger: C.wc, ...extra, ...tmCfg() });
+    const plugged = C.chg !== 'off', charging = C.chg === 'wc' || C.chg === 'sc'; FAST = C.chg === 'sc';
+    const chg = charging ? 'charging' : plugged ? 'stopped' : 'disconnected';
     const put = (id, st) => { if (states[id]) states[id] = { ...states[id], state: st }; };
+    put('sensor.' + P + 'potencia_do_carregador', charging ? (FAST ? '148' : '10.8') : '0'); put('sensor.' + P + 'corrente_do_carregador', charging && !FAST ? '16' : '0');
+    put('sensor.' + TP + 'charger_actual_current', charging && !FAST ? '16' : '0');
     if (INTEG !== 'teslamate') {
       const cab = 'binary_sensor.' + P + (CUSTOM ? 'charger' : 'cabo_de_carregamento'), sw = 'switch.' + P + (CUSTOM ? 'charger' : 'carregar');
       if (!CUSTOM) states['sensor.' + P + 'a_carregar'] = { ...states['sensor.' + P + 'a_carregar'], state: chg };
-      states[cab] = { ...states[cab], state: C.chg ? 'on' : 'off', attributes: CUSTOM ? { ...states[cab].attributes, charging_state: TC_STATE[chg] } : states[cab].attributes };
-      states[sw] = { ...states[sw], state: C.chg ? 'on' : 'off' };
+      states[cab] = { ...states[cab], state: plugged ? 'on' : 'off', attributes: CUSTOM ? { ...states[cab].attributes, charging_state: TC_STATE[chg], ...tcFast(plugged) } : states[cab].attributes };
+      states[sw] = { ...states[sw], state: charging ? 'on' : 'off' };
       states['binary_sensor.' + P + 'aviso_de_pressao_do_pneu_traseiro_esquerdo'] = { ...states['binary_sensor.' + P + 'aviso_de_pressao_do_pneu_traseiro_esquerdo'], state: C.tw ? 'on' : 'off' };
       states['sensor.' + P + 'pressao_do_pneu_traseiro_esquerdo'] = { ...states['sensor.' + P + 'pressao_do_pneu_traseiro_esquerdo'], state: C.tw ? '2.4' : '2.9' };
       states['binary_sensor.' + P + 'porta_da_frente_do_condutor'] = { ...states['binary_sensor.' + P + 'porta_da_frente_do_condutor'], state: C.door ? 'on' : 'off' };
     }
     // TeslaMate: os mesmos interruptores do mockup
-    put('sensor.' + TP + 'charging_state', C.chg ? 'Charging' : 'Disconnected'); put('binary_sensor.' + TP + 'charging_state', C.chg ? 'on' : 'off');
-    put('sensor.' + TP + 'state', C.chg ? 'Charging' : 'Online'); put('sensor.' + TP + 'charger_power', C.chg ? '11' : '0');
-    put('binary_sensor.' + TP + 'plugged_in', C.chg ? 'on' : 'off'); put('binary_sensor.' + TP + 'charge_port_door_open', C.chg ? 'on' : 'off');
+    put('sensor.' + TP + 'charging_state', charging ? 'Charging' : plugged ? 'Stopped' : 'Disconnected'); put('binary_sensor.' + TP + 'charging_state', charging ? 'on' : 'off');
+    put('sensor.' + TP + 'state', charging ? 'Charging' : 'Online'); put('sensor.' + TP + 'charger_power', charging ? (FAST ? '148' : '11') : '0');
+    put('binary_sensor.' + TP + 'plugged_in', plugged ? 'on' : 'off'); put('binary_sensor.' + TP + 'charge_port_door_open', plugged ? 'on' : 'off');
     put('binary_sensor.' + TP + 'tpms_soft_warning_rl', C.tw ? 'on' : 'off'); put('sensor.' + TP + 'tpms_pressure_rl', C.tw ? '2.4' : '2.9');
     put('binary_sensor.' + TP + 'driver_front_door_open', C.door ? 'on' : 'off'); put('binary_sensor.' + TP + 'doors_open', C.door ? 'on' : 'off');
     put('lock.' + P + 'fechadura', C.unl ? 'unlocked' : 'locked'); put('binary_sensor.' + TP + 'locked', C.unl ? 'on' : 'off');
@@ -346,7 +356,8 @@ if (demo) {
   demo.querySelector('#dTheme').onchange = e => { C.theme = e.target.value; apply(); };
   demo.querySelector('#dColor').onchange = e => { C.color = e.target.value; apply(); };
   demo.querySelector('#dInt').onchange = e => { C.interior = e.target.value; apply(); };
-  demo.querySelector('#dChg').onchange = e => { C.chg = e.target.checked; apply(); };
+  demo.querySelector('#dChg').onchange = e => { C.chg = e.target.value; apply(); };
+  demo.querySelector('#dWc').onchange = e => { C.wc = e.target.value; apply(); };
   demo.querySelector('#dTw').onchange = e => { C.tw = e.target.checked; apply(); };
   demo.querySelector('#dDoor').onchange = e => { C.door = e.target.checked; apply(); };
   demo.querySelector('#dUnl').onchange = e => { C.unl = e.target.checked; apply(); };
