@@ -1,11 +1,11 @@
 import { CSS } from './styles.js';
-import { SLOTS, SECTIONS, DEFAULT_SHORTCUTS, HIDDEN_BY_DEFAULT, TAG_KEYS, COLORS, MODELS, DEFAULT_MODEL, detectEntities, findTeslaVehicle } from './slots.js';
+import { SLOTS, SECTIONS, DEFAULT_SHORTCUTS, HIDDEN_BY_DEFAULT, TAG_KEYS, COLORS, MODELS, DEFAULT_MODEL, detectEntities, findTeslaVehicle, integrationName } from './slots.js';
 import { t, lang } from './i18n.js';
 import './editor.js';
 import { CarScene } from './scene.js';
 import { REPO, client, feedbackUrl } from './feedback.js';
 
-export const VERSION = '1.3.1';
+export const VERSION = '1.4.0';
 const modelInfo = key => MODELS[key] || MODELS[DEFAULT_MODEL];
 const modelUrl = m => new URL('./' + m.file, import.meta.url).href;
 const BAD = new Set(['unavailable', 'unknown', '', null, undefined]);
@@ -182,6 +182,12 @@ class GarageForTeslaCard extends HTMLElement {
     const h = this._hass, c = this._config;
     this._device = c.device_id || findTeslaVehicle(h);
     this._map = detectEntities(h, this._device);
+    // TeslaMate como fonte da informação (atualiza mais vezes); os comandos continuam a vir do carro escolhido
+    const tm = c.teslamate_device_id;
+    if (tm && tm !== this._device && integrationName(h, tm) === 'TeslaMate') {
+      const m = detectEntities(h, tm);
+      for (const k of Object.keys(m)) if (SLOTS[k].kind === 'info') this._map[k] = m[k];
+    }
     const dark = this._dark(), paint = this._paint(), bg = bgFor(paint, dark), r = this.$.root;
     r.classList.toggle('dark', dark); r.classList.toggle('light', !dark);
     r.style.setProperty('--center', bg.center); r.style.setProperty('--mid', bg.mid); r.style.setProperty('--edge', bg.edge);
@@ -204,10 +210,12 @@ class GarageForTeslaCard extends HTMLElement {
   _syncScene() {
     if (!this._scene || this._scene.failed || !this._map) return;
     const { charging, plugged } = this._chargeInfo();
-    const cl = this._ok('climate');
+    const ro = (k, r) => this._ent(k) ? this._ok(k) : this._ok(r);   // TeslaMate: sem o comando, o sensor só de leitura
+    const cl = ro('climate', 'ro_climate');
     const w = k => { const s = this._ok('tpms_warn_' + k); return !!(s && s.state === 'on'); };
-    const op = k => { const x = this._ok(k); return !!(x && (x.state === 'open' || x.state === 'on')); };
-    const se = this._ok('sentry');
+    const RO = { frunk: 'ro_frunk', trunk: 'ro_trunk', charge_port: 'ro_port' };
+    const op = k => { const x = RO[k] ? ro(k, RO[k]) : this._ok(k); return !!(x && (x.state === 'open' || x.state === 'on')); };
+    const se = ro('sentry', 'ro_sentry');
     const LV = { off: 0, low: 1, medium: 2, med: 2, high: 3, '0': 0, '1': 1, '2': 2, '3': 3, 'heat low': 1, 'heat medium': 2, 'heat high': 3 }; // Heat …: Tesla Custom com bancos ventilados
     const lvl = k => { const x = this._ok(k); return x ? LV[String(x.state).toLowerCase()] || 0 : 0; };
     // ventilação: "Cool …" na mesma entidade (Tesla Custom) ou a entidade à parte ligada (Tessie/Teslemetry)
@@ -256,13 +264,17 @@ class GarageForTeslaCard extends HTMLElement {
 
     const bits = [];
     const sh = this._ok('shift'), shift = sh ? sh.state.toLowerCase() : '';
-    const on = this._ok('online');
+    const on = this._ok('online'), rs = this._ok('ro_state');   // ro_state: estado do TeslaMate (Asleep, Online, Driving…)
     if (/^[drn]$/.test(shift)) { const sp = this._num('speed'); bits.push(this._t('driving') + (sp != null ? ' · ' + this._fmt(sp) + ' ' + this._unit('speed') : '')); }
-    else if (ci.charging) bits.push(this._t('charging_s') + (ci.mins != null ? ' · ' + this._dur(ci.mins) + ' ' + this._t('until') + ' ' + (this._num('charge_limit') != null ? this._fmt(this._num('charge_limit')) + ' %' : '100 %') : ''));
+    else if (ci.charging) bits.push(this._t('charging_s') + (ci.mins != null ? ' · ' + this._dur(ci.mins) + ' ' + this._t('until') + ' ' + ((this._num('charge_limit') ?? this._num('ro_limit')) != null ? this._fmt(this._num('charge_limit') ?? this._num('ro_limit')) + ' %' : '100 %') : ''));
     else if (ci.complete && ci.plugged) bits.push(this._t('complete'));
     else if (ci.plugged) bits.push(this._t('plugged'));
-    else if (on && on.state === 'off') bits.push(this._t('asleep'));
+    else if ((on && on.state === 'off') || (rs && /^asleep$/i.test(rs.state))) bits.push(this._t('asleep'));
+    else if (rs && /^offline$/i.test(rs.state)) bits.push(this._t('offline'));
     else bits.push(this._t('parked'));
+    // TeslaMate (só leitura, sem o cadeado no tejadilho): trancado no estado; destrancado vai para os avisos, a laranja
+    const rl = !this._ent('lock') && this._ok('ro_locked');
+    if (rl && rl.state === 'off') bits.push(this._t('locked'));
     const loc = this._ok('location');
     if (loc) bits.push(loc.state === 'home' ? this._t('home') : loc.state === 'not_home' ? this._t('away') : this._fs(loc));
     $.status.innerHTML = `<ha-icon icon="${ci.charging ? 'mdi:ev-station' : loc ? 'mdi:map-marker-outline' : 'mdi:car-outline'}"></ha-icon><span>${bits.map(esc).join(' <span class="dotsep">·</span> ')}</span>`;
@@ -271,6 +283,7 @@ class GarageForTeslaCard extends HTMLElement {
     $.temps.innerHTML = ti == null && to == null ? '' : `<ha-icon icon="mdi:thermometer"></ha-icon><span>${[ti != null ? this._t('inside') + ' ' + this._fmt(ti) + '°' : '', to != null ? this._t('outside') + ' ' + this._fmt(to) + '°' : ''].filter(Boolean).join(' <span class="dotsep">·</span> ')}</span>`;
 
     const al = [];
+    if (rl && rl.state === 'on') al.push(`<span class="alert"><ha-icon icon="mdi:lock-open-variant"></ha-icon>${esc(this._t('unlocked'))}</span>`);
     const doors = { df: 'seat_fl', pf: 'seat_fr', dr: 'seat_rl', pr: 'seat_rr' };
     let openDoors = 0; for (const k of Object.keys(doors)) { const s = this._ok('door_' + k); if (s && s.state === 'on') openDoors++; }
     if (openDoors) al.push(`<span class="alert"><ha-icon icon="mdi:car-door"></ha-icon>${openDoors} ${esc(this._t(openDoors > 1 ? 'doors_open' : 'door_open'))}</span>`);
@@ -323,13 +336,15 @@ class GarageForTeslaCard extends HTMLElement {
       const ci = this._chargeInfo();
       el.querySelector('ha-icon').setAttribute('icon', ci.charging ? 'mdi:lightning-bolt' : ci.plugged ? 'mdi:ev-plug-type2' : 'mdi:ev-plug-type2');
       el.classList.toggle('charging', ci.charging); el.classList.toggle('plugged', ci.plugged && !ci.charging);
-      const pp = this._ok('charge_port'); el.classList.toggle('warn', !ci.charging && !ci.plugged && !!pp && pp.state === 'open');
+      const pp = this._ok('charge_port'), rp = !this._ent('charge_port') && this._ok('ro_port');
+      el.classList.toggle('warn', !ci.charging && !ci.plugged && ((!!pp && pp.state === 'open') || (!!rp && rp.state === 'on')));
       const b = el.querySelector('b'), sm = el.querySelector('small');
       if (ci.charging) {
         b.textContent = (ci.power != null ? this._fmt(ci.power, ci.power < 10 ? 1 : 0) + ' ' + ci.powerU : this._t('charging_s'));
         sm.textContent = '';   // só a potência: o tempo que falta já está no cabeçalho
       } else if (ci.plugged) { b.textContent = this._t(ci.complete ? 'complete' : 'plugged'); sm.textContent = this._t('charge_port'); }
-      else { const p = this._ok('charge_port'); b.textContent = this._t('charge_port'); sm.textContent = p && p.state === 'open' ? this._t('open') : this._t('s_open'); }
+      else if (this._ent('charge_port')) { const p = this._ok('charge_port'); b.textContent = this._t('charge_port'); sm.textContent = p && p.state === 'open' ? this._t('open') : this._t('s_open'); }
+      else { const p = this._ok('ro_port'); b.textContent = this._t('charge_port'); sm.textContent = this._t(p && p.state === 'on' ? 'open' : 'closed'); }   // só leitura (TeslaMate): diz como está, não oferece abrir
     } });
   }
   _placeTags() {
@@ -593,6 +608,6 @@ class GarageForTeslaCard extends HTMLElement {
 if (!customElements.get('garage-for-tesla-card')) customElements.define('garage-for-tesla-card', GarageForTeslaCard);
 window.customCards = window.customCards || [];
 if (!window.customCards.some(c => c.type === 'garage-for-tesla-card')) {
-  window.customCards.push({ type: 'garage-for-tesla-card', name: 'Garage for Tesla', description: '3D dashboard for your Tesla (Tessie, Teslemetry, Tesla Fleet, Tesla Custom).', preview: false, documentationURL: REPO });
+  window.customCards.push({ type: 'garage-for-tesla-card', name: 'Garage for Tesla', description: '3D dashboard for your Tesla (Tessie, Teslemetry, Tesla Fleet, Tesla Custom, TeslaMate).', preview: false, documentationURL: REPO });
 }
 console.info(`%c GARAGE FOR TESLA %c ${VERSION} `, 'background:#111;color:#fff;border-radius:4px 0 0 4px;padding:2px 6px', 'background:#e31937;color:#fff;border-radius:0 4px 4px 0;padding:2px 6px');

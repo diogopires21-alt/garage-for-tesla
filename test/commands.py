@@ -29,7 +29,8 @@ async def page(b, qs, w=1400, h=820):
 
 async def main(pre):
     async with async_playwright() as p:
-        b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=ARGS)
+        # Windows: Chrome instalado + placa gráfica; Linux: swiftshader (sem placa)
+        b = await (p.chromium.launch(channel='chrome', args=['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']) if sys.platform == 'win32' else p.chromium.launch(executable_path='/usr/bin/google-chrome', args=ARGS))
 
         print('A. Tessie, frunk aberto')
         pg, errs = await page(b, 'frunk=1')

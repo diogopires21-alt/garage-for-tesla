@@ -5,35 +5,44 @@
 
 export const SLOTS = {
   // ---------- informação ----------
-  battery:       { d: 'sensor', kind: 'info', tk: ['charge_state_usable_battery_level', 'charge_state_battery_level'], re: /(_battery(_level)?|usable_battery_level|nivel_da_bateria)$/ },
-  range:         { d: 'sensor', kind: 'info', tk: ['charge_state_battery_range', 'charge_state_est_battery_range'], re: /(_range|battery_range|autonomia_da_bateria)$/ },
-  charging:      { d: 'sensor', kind: 'info', tk: ['charge_state_charging_state'], re: /(charging_state|_charging|a_carregar)$/ },
-  charge_power:  { d: 'sensor', kind: 'info', tk: ['charge_state_charger_power'], re: /(charger_power|charging_power|potencia_do_carregador)$/ },
+  battery:       { d: 'sensor', kind: 'info', tk: ['charge_state_usable_battery_level', 'charge_state_battery_level'], re: /(_battery(_level)?|usable_battery_level|nivel_da_bateria)$/, tm: ['usable_battery_level', 'battery_level'] },
+  range:         { d: 'sensor', kind: 'info', tk: ['charge_state_battery_range', 'charge_state_est_battery_range'], re: /(_range|battery_range|autonomia_da_bateria)$/, tm: ['rated_battery_range', 'rated_battery_range_km', 'est_battery_range', 'est_battery_range_km'] },
+  charging:      { d: 'sensor', kind: 'info', tk: ['charge_state_charging_state'], re: /(charging_state|_charging|a_carregar)$/, tm: ['charging_state'] },
+  charge_power:  { d: 'sensor', kind: 'info', tk: ['charge_state_charger_power'], re: /(charger_power|charging_power|potencia_do_carregador)$/, tm: ['charger_power'] },
   charge_rate:   { d: 'sensor', kind: 'info', tk: ['charge_state_charge_rate'], re: /(charge_rate|charging_rate|taxa_de_carregamento)$/ },
-  time_to_full:  { d: 'sensor', kind: 'info', tk: ['charge_state_minutes_to_full_charge'], re: /(minutes_to_full|time_to_full|time_charge_complete|tempo_ate_a_carga_completa)/ },
-  energy_added:  { d: 'sensor', kind: 'info', tk: ['charge_state_charge_energy_added'], re: /(energy_added|energia_de_carga_adicionada)$/ },
-  cable:         { d: 'binary_sensor', kind: 'info', tk: ['charge_state_conn_charge_cable'], re: /(charge_cable|charger|cabo_de_carregamento)$/ },
-  odometer:      { d: 'sensor', kind: 'info', tk: ['vehicle_state_odometer'], re: /(odometer|odometro)$/ },
-  inside_temp:   { d: 'sensor', kind: 'info', tk: ['climate_state_inside_temp'], re: /(temperature_inside|inside_temp|temperatura_interior)$/ },
-  outside_temp:  { d: 'sensor', kind: 'info', tk: ['climate_state_outside_temp'], re: /(temperature_outside|outside_temp|temperatura_exterior)$/ },
-  tpms_fl:       { d: 'sensor', kind: 'info', tk: ['vehicle_state_tpms_pressure_fl'], re: /(tpms_front_left|tpms_pressure_fl|pneu_dianteiro_esquerdo)$/ },
-  tpms_fr:       { d: 'sensor', kind: 'info', tk: ['vehicle_state_tpms_pressure_fr'], re: /(tpms_front_right|tpms_pressure_fr|pneu_dianteiro_direito)$/ },
-  tpms_rl:       { d: 'sensor', kind: 'info', tk: ['vehicle_state_tpms_pressure_rl'], re: /(tpms_rear_left|tpms_pressure_rl|pneu_traseiro_esquerdo)$/ },
-  tpms_rr:       { d: 'sensor', kind: 'info', tk: ['vehicle_state_tpms_pressure_rr'], re: /(tpms_rear_right|tpms_pressure_rr|pneu_traseiro_direito)$/ },
-  tpms_warn_fl:  { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_tpms_soft_warning_fl'] },
-  tpms_warn_fr:  { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_tpms_soft_warning_fr'] },
-  tpms_warn_rl:  { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_tpms_soft_warning_rl'] },
-  tpms_warn_rr:  { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_tpms_soft_warning_rr'] },
-  shift:         { d: 'sensor', kind: 'info', tk: ['drive_state_shift_state'], re: /(shift_state|estado_da_caixa)$/ },
-  speed:         { d: 'sensor', kind: 'info', tk: ['drive_state_speed'], re: /(_speed|velocidade)$/ },
-  location:      { d: 'device_tracker', kind: 'info', tk: ['location'], re: /(location|localizacao)$/, not: /(route|rota|origin|destination)/ },
+  time_to_full:  { d: 'sensor', kind: 'info', tk: ['charge_state_minutes_to_full_charge'], re: /(minutes_to_full|time_to_full|time_charge_complete|tempo_ate_a_carga_completa)/, tm: ['time_to_full_charge'] },
+  energy_added:  { d: 'sensor', kind: 'info', tk: ['charge_state_charge_energy_added'], re: /(energy_added|energia_de_carga_adicionada)$/, tm: ['charge_energy_added'] },
+  cable:         { d: 'binary_sensor', kind: 'info', tk: ['charge_state_conn_charge_cable'], re: /(charge_cable|charger|cabo_de_carregamento)$/, tm: ['plugged_in'] },
+  odometer:      { d: 'sensor', kind: 'info', tk: ['vehicle_state_odometer'], re: /(odometer|odometro)$/, tm: ['odometer'] },
+  inside_temp:   { d: 'sensor', kind: 'info', tk: ['climate_state_inside_temp'], re: /(temperature_inside|inside_temp|temperatura_interior)$/, tm: ['inside_temp'] },
+  outside_temp:  { d: 'sensor', kind: 'info', tk: ['climate_state_outside_temp'], re: /(temperature_outside|outside_temp|temperatura_exterior)$/, tm: ['outside_temp'] },
+  tpms_fl:       { d: 'sensor', kind: 'info', tk: ['vehicle_state_tpms_pressure_fl'], re: /(tpms_front_left|tpms_pressure_fl|pneu_dianteiro_esquerdo)$/, tm: ['tpms_pressure_fl'] },
+  tpms_fr:       { d: 'sensor', kind: 'info', tk: ['vehicle_state_tpms_pressure_fr'], re: /(tpms_front_right|tpms_pressure_fr|pneu_dianteiro_direito)$/, tm: ['tpms_pressure_fr'] },
+  tpms_rl:       { d: 'sensor', kind: 'info', tk: ['vehicle_state_tpms_pressure_rl'], re: /(tpms_rear_left|tpms_pressure_rl|pneu_traseiro_esquerdo)$/, tm: ['tpms_pressure_rl'] },
+  tpms_rr:       { d: 'sensor', kind: 'info', tk: ['vehicle_state_tpms_pressure_rr'], re: /(tpms_rear_right|tpms_pressure_rr|pneu_traseiro_direito)$/, tm: ['tpms_pressure_rr'] },
+  tpms_warn_fl:  { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_tpms_soft_warning_fl'], tm: ['tpms_soft_warning_fl'] },
+  tpms_warn_fr:  { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_tpms_soft_warning_fr'], tm: ['tpms_soft_warning_fr'] },
+  tpms_warn_rl:  { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_tpms_soft_warning_rl'], tm: ['tpms_soft_warning_rl'] },
+  tpms_warn_rr:  { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_tpms_soft_warning_rr'], tm: ['tpms_soft_warning_rr'] },
+  shift:         { d: 'sensor', kind: 'info', tk: ['drive_state_shift_state'], re: /(shift_state|estado_da_caixa)$/, tm: ['shift_state'] },
+  speed:         { d: 'sensor', kind: 'info', tk: ['drive_state_speed'], re: /(_speed|velocidade)$/, tm: ['speed'] },
+  location:      { d: 'device_tracker', kind: 'info', tk: ['location'], re: /(location|localizacao)$/, not: /(route|rota|origin|destination)/, tm: ['location'] },
   online:        { d: 'binary_sensor', kind: 'info', tk: ['state'], re: /(_online|_status|_estado)$/ },
-  update:        { d: 'update', kind: 'info', tk: ['update'], re: /(software_update|_update|atualizacao)$/ },
-  door_df:       { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_df'] },
-  door_dr:       { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_dr'] },
-  door_pf:       { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_pf'] },
-  door_pr:       { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_pr'] },
+  update:        { d: 'update', kind: 'info', tk: ['update'], re: /(software_update|_update|atualizacao)$/, tm: ['update'] },
+  door_df:       { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_df'], tm: ['driver_front_door_open'] },
+  door_dr:       { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_dr'], tm: ['driver_rear_door_open'] },
+  door_pf:       { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_pf'], tm: ['passenger_front_door_open'] },
+  door_pr:       { d: 'binary_sensor', kind: 'info', tk: ['vehicle_state_pr'], tm: ['passenger_rear_door_open'] },
 
+  // TeslaMate (só leitura): o estado do que noutras integrações é um comando; usado só quando não há o comando
+  ro_state:      { d: 'sensor', kind: 'info', tm: ['state'] },
+  ro_locked:     { d: 'binary_sensor', kind: 'info', tm: ['locked'] },   // on = destrancado
+  ro_sentry:     { d: 'binary_sensor', kind: 'info', tm: ['sentry_mode'] },
+  ro_climate:    { d: 'binary_sensor', kind: 'info', tm: ['is_climate_on'] },
+  ro_frunk:      { d: 'binary_sensor', kind: 'info', tm: ['frunk_open'] },
+  ro_trunk:      { d: 'binary_sensor', kind: 'info', tm: ['trunk_open'] },
+  ro_port:       { d: 'binary_sensor', kind: 'info', tm: ['charge_port_door_open'] },
+  ro_limit:      { d: 'sensor', kind: 'info', tm: ['charge_limit_soc'] },
   // ---------- ações ----------
   lock:          { d: 'lock', kind: 'action', tk: ['vehicle_state_locked'], re: /(_doors|_lock|fechadura)$/, not: /(charge|cabo|cable|latch)/, icon: 'mdi:lock', iconOff: 'mdi:lock-open-variant', confirmOff: true, sec: 'security' },
   sentry:        { d: 'switch', kind: 'action', tk: ['vehicle_state_sentry_mode'], re: /(sentry_mode|modo_sentinela)$/, icon: 'mdi:shield-car', sec: 'security' },
@@ -123,12 +132,43 @@ export const COLORS = {
   marine_blue:   { hex: '#2b507c', m: .50, r: .22, vivid: true },
 };
 
+// Integração de cada dispositivo (pela plataforma das entidades dele)
+const slug = x => String(x || '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+const devEnts = (hass, id) => Object.values((hass && hass.entities) || {}).filter(e => e.device_id === id);
+// TeslaMate: carro "Tesla" criado por MQTT (descoberta automática ou o YAML antigo), sensores sensor.tesla_<nome>
+export function isTeslaMate(hass, deviceId) {
+  const ents = devEnts(hass, deviceId);
+  return ents.some(e => e.platform === 'mqtt') && ents.some(e => /_(since|healthy|display_name|usable_battery_level)(_\d+)?$/.test(e.entity_id));
+}
+const PLATFORMS = { tessie: 'Tessie', teslemetry: 'Teslemetry', tesla_fleet: 'Tesla Fleet', tesla_custom: 'Tesla Custom', mqtt: 'MQTT' };
+export function integrationName(hass, deviceId) {
+  if (!deviceId) return '';
+  if (isTeslaMate(hass, deviceId)) return 'TeslaMate';
+  const p = devEnts(hass, deviceId).map(e => e.platform).find(Boolean);
+  return p ? PLATFORMS[p] || p : '';
+}
+
 // Encontra a entidade de cada slot num dispositivo
 export function detectEntities(hass, deviceId) {
   const out = {};
   if (!hass || !hass.entities || !deviceId) return out;
-  const ents = Object.values(hass.entities).filter(e => e.device_id === deviceId);
+  const ents = devEnts(hass, deviceId);
+  if (isTeslaMate(hass, deviceId)) {
+    // nomes do TeslaMate: tesla_<nome> (ou <nome do carro>_<nome>), _2, _3… quando há mais de um carro
+    const d = hass.devices && hass.devices[deviceId], pre = [...new Set(['tesla', slug(d && d.name_by_user), slug(d && d.name)].filter(Boolean))];
+    for (const [key, s] of Object.entries(SLOTS)) {
+      if (!s.tm) continue;
+      const dom = ents.filter(e => e.entity_id.split('.')[0] === s.d);
+      for (const n of s.tm) {
+        const re = new RegExp(`^(${pre.join('|')})_${n}(_\\d+)?$`);
+        const hit = dom.find(e => re.test(e.entity_id.split('.')[1]));
+        if (hit) { out[key] = hit.entity_id; break; }
+      }
+    }
+    return out;
+  }
   for (const [key, s] of Object.entries(SLOTS)) {
+    if (!s.tk && !s.re) continue;
     const dom = ents.filter(e => e.entity_id.split('.')[0] === s.d);
     let hit = s.tk && dom.find(e => s.tk.includes(e.translation_key));
     if (!hit && s.re) {
@@ -148,6 +188,7 @@ export function findTeslaVehicle(hass) {
   const devs = Object.values(hass.devices).filter(d => /tesla/i.test(d.manufacturer || '') && !/wall|powerwall|gateway|energy|connector/i.test(d.model || ''));
   const ents = Object.values(hass.entities || {});
   const isCar = d => ents.some(e => e.device_id === d.id && (e.entity_id.startsWith('lock.') || e.entity_id.startsWith('climate.')));
-  const car = devs.find(isCar) || null;
+  // sem carro com comandos: o carro do TeslaMate (só leitura)
+  const car = devs.find(isCar) || devs.find(d => isTeslaMate(hass, d.id)) || null;
   return car ? car.id : null;
 }

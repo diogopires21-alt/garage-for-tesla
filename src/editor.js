@@ -1,4 +1,4 @@
-import { SLOTS, COLORS, MODELS, DEFAULT_SHORTCUTS, HIDDEN_BY_DEFAULT, TAG_KEYS, detectEntities, findTeslaVehicle } from './slots.js';
+import { SLOTS, COLORS, MODELS, DEFAULT_SHORTCUTS, HIDDEN_BY_DEFAULT, TAG_KEYS, detectEntities, findTeslaVehicle, integrationName, isTeslaMate } from './slots.js';
 import { t } from './i18n.js';
 
 class GarageForTeslaCardEditor extends HTMLElement {
@@ -13,6 +13,8 @@ class GarageForTeslaCardEditor extends HTMLElement {
     const opt = k => ({ value: k, label: t(h, k) });
     return [
       { name: 'device_id', selector: { device: { filter: { manufacturer: 'Tesla' } } } },
+      // só aparece quando há um carro do TeslaMate no HA e o carro escolhido não é ele
+      ...(this._tmDevices(h).length && !isTeslaMate(h, dev) ? [{ name: 'teslamate_device_id', selector: { device: { filter: { integration: 'mqtt', manufacturer: 'Tesla' } } } }] : []),
       { name: 'name', selector: { text: {} } },
       { name: 'car_model', selector: { select: { mode: 'dropdown', options: Object.entries(MODELS).map(([k, m]) => ({ value: k, label: m.name })) } } },
       { type: 'grid', name: '', schema: [
@@ -27,11 +29,25 @@ class GarageForTeslaCardEditor extends HTMLElement {
     ];
   }
 
+  _tmDevices(h) { return Object.keys((h && h.devices) || {}).filter(id => /tesla/i.test(h.devices[id].manufacturer || '') && isTeslaMate(h, id)); }
+  // por baixo do campo "Carro": nome e integração do carro que o cartão está a usar (ex.: "K.I.T.T. · Tessie")
+  _helper(s) {
+    const h = this._hass, c = this._config;
+    if (s.name === 'device_id') {
+      const id = c.device_id || findTeslaVehicle(h), d = id && h.devices && h.devices[id]; if (!d) return '';
+      const txt = [d.name_by_user || d.name, integrationName(h, id)].filter(Boolean).join(' · ');
+      return (c.device_id ? '' : t(h, 'ed_auto_car') + ': ') + txt + (isTeslaMate(h, id) ? ' · ' + t(h, 'ed_readonly') : '');
+    }
+    if (s.name === 'teslamate_device_id') return t(h, 'ed_teslamate_help');
+    return '';
+  }
+
   _render() {
     if (!this._hass || !this._config) return;
     if (!this._form) {
       this._form = document.createElement('ha-form');
-      this._form.computeLabel = s => t(this._hass, 'ed_' + (s.name === 'device_id' ? 'device' : s.name));
+      this._form.computeLabel = s => t(this._hass, 'ed_' + ({ device_id: 'device', teslamate_device_id: 'teslamate' }[s.name] || s.name));
+      this._form.computeHelper = s => this._helper(s);
       this._form.addEventListener('value-changed', e => {
         const cfg = Object.assign({}, e.detail.value);
         for (const k of Object.keys(cfg)) if (cfg[k] === '' || cfg[k] == null) delete cfg[k];

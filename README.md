@@ -27,6 +27,22 @@ The card does not log in to Tesla. It reads the entities that your Tesla integra
 | [Teslemetry](https://www.home-assistant.io/integrations/teslemetry) | Supported (same entity keys) |
 | [Tesla Fleet](https://www.home-assistant.io/integrations/tesla_fleet) | Supported (same entity keys) |
 | [Tesla Custom Integration](https://github.com/alandtse/tesla) | Best effort (matched by entity name) |
+| [TeslaMate](https://docs.teslamate.org/docs/integrations/home_assistant) | Read only (no buttons): information only, see below |
+
+The card editor shows which car and which integration the card is using, under the **Car** field.
+
+### TeslaMate
+
+TeslaMate can create the car in Home Assistant by itself (MQTT discovery, see the [TeslaMate docs](https://docs.teslamate.org/docs/integrations/home_assistant)). The card then finds it like any other Tesla:
+
+- **TeslaMate only**: you get the 3D car with battery, range, charging, doors, frunk/trunk, tyres, temperatures and location. TeslaMate cannot send commands to the car, so there are no buttons.
+- **TeslaMate and another integration** (for example Tesla Fleet): pick the car from the other integration under **Car** and the TeslaMate car under **TeslaMate data**. The information comes from TeslaMate, which updates more often; the buttons keep using the other integration.
+
+```yaml
+type: custom:garage-for-tesla-card
+device_id: 0123456789abcdef            # the car from Tesla Fleet, Tessie, Teslemetry…
+teslamate_device_id: fedcba9876543210  # the car created by TeslaMate
+```
 
 If something isn't detected, you can point the card to the right entity with `entities:` (see below).
 
@@ -61,6 +77,7 @@ All options:
 ```yaml
 type: custom:garage-for-tesla-card
 device_id: 0123456789abcdef          # optional, first Tesla car found if empty
+teslamate_device_id: fedcba987654321 # optional, the TeslaMate car: information comes from it (see TeslaMate above)
 name: K.I.T.T.                       # optional, defaults to the device name
 car_model: model3_highland           # model3_highland, model3_classic, modely_juniper, modely_classic
 color: pearl_white                   # only colours that exist for the chosen model (see below)
@@ -88,7 +105,7 @@ Control keys (for `shortcuts:`, `menu:` and `entities:`): `lock, sentry, valet, 
 
 ### Info keys
 
-The card finds these sensors by itself with Tessie, Teslemetry, Tesla Fleet and the Tesla Custom Integration. If yours come from somewhere else (for example Fleet Telemetry over MQTT, or TeslaMate), point the card to them under `entities:` with the keys below. Use the entity type shown: the card reads the state exactly as described.
+The card finds these sensors by itself with Tessie, Teslemetry, Tesla Fleet and the Tesla Custom Integration. It also finds them in the car that TeslaMate creates. If yours come from somewhere else (for example Fleet Telemetry over MQTT), point the card to them under `entities:` with the keys below. Use the entity type shown: the card reads the state exactly as described.
 
 | Key | Entity | What the card expects |
 |---|---|---|

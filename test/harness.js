@@ -13,6 +13,42 @@ class HaIcon extends HTMLElement {
 }
 customElements.define('ha-icon', HaIcon);
 customElements.define('ha-card', class extends HTMLElement { connectedCallback() { this.style.display = 'block'; } });
+// imitação simples do ha-form do HA: só para ver o editor do cartão no simulador
+class HaForm extends HTMLElement {
+  set hass(h) { this._h = h; } set data(d) { this._d = d; this._r(); } set schema(s) { this._s = s; this._r(); }
+  _r() {
+    if (!this._s || !this._d || !this._h) return;
+    const flat = []; for (const f of this._s) f.type === 'grid' ? flat.push(...f.schema) : flat.push(f);
+    this.innerHTML = '';
+    for (const f of flat) {
+      const w = document.createElement('label'); w.className = 'hf';
+      const lab = document.createElement('span'); lab.className = 'hl'; lab.textContent = this.computeLabel ? this.computeLabel(f) : f.name; w.appendChild(lab);
+      const sel = f.selector || {}, v = this._d[f.name];
+      const set = val => { const d = { ...this._d }; if (val === '' || val == null) delete d[f.name]; else d[f.name] = val; this._d = d; this.dispatchEvent(new CustomEvent('value-changed', { detail: { value: d } })); };
+      let el;
+      if (sel.device) {
+        el = document.createElement('select'); const flt = sel.device.filter || {};
+        const ok = id => { const d = this._h.devices[id]; if (flt.manufacturer && d.manufacturer !== flt.manufacturer) return false; if (flt.integration) return Object.values(this._h.entities).some(e => e.device_id === id && e.platform === flt.integration); return true; };
+        el.innerHTML = '<option value="">—</option>' + Object.keys(this._h.devices).filter(ok).map(id => `<option value="${id}"${id === v ? ' selected' : ''}>${this._h.devices[id].name_by_user || this._h.devices[id].name}</option>`).join('');
+        el.onchange = () => set(el.value);
+      } else if (sel.select && sel.select.multiple) {
+        el = document.createElement('div'); el.className = 'hm';
+        el.innerHTML = sel.select.options.map(o => `<span>${(v || []).includes(o.value) ? '☑' : '☐'} ${o.label}</span>`).join('');
+      } else if (sel.select) {
+        el = document.createElement('select');
+        el.innerHTML = sel.select.options.map(o => `<option value="${o.value}"${o.value === v ? ' selected' : ''}>${o.label}</option>`).join('');
+        el.onchange = () => set(el.value);
+      } else if (sel.boolean) {
+        el = document.createElement('input'); el.type = 'checkbox'; el.checked = !!v; el.onchange = () => set(el.checked);
+      } else { el = document.createElement('input'); el.value = v || ''; el.onchange = () => set(el.value); }
+      w.appendChild(el);
+      const hp = this.computeHelper ? this.computeHelper(f) : '';
+      if (hp) { const h = document.createElement('small'); h.className = 'hh'; h.textContent = hp; w.appendChild(h); }
+      this.appendChild(w);
+    }
+  }
+}
+customElements.define('ha-form', HaForm);
 
 const q = new URLSearchParams(location.search);
 const demo = document.getElementById('demo');
@@ -33,7 +69,8 @@ const MODEL = q.get('model') || 'model3_highland';
 const DEV = 'dev_kitt';
 const P = 'k_i_t_t_';
 // [domínio.object_id, translation_key, estado, atributos]
-let CUSTOM = q.get('integ') === 'custom';   // no mockup muda com a opção "Integração"
+// integ: tessie (por omissão) | custom (Tesla Custom) | teslamate (só TeslaMate) | fleet_tm (Tesla Fleet + TeslaMate)
+let INTEG = q.get('integ') || 'tessie', CUSTOM = INTEG === 'custom';   // no mockup muda com a opção "Integração"
 const TC_STATE = { charging: 'Charging', complete: 'Complete', stopped: 'Stopped', disconnected: 'Disconnected' };
 const FRONT_COOL_HEAT = ['Off', 'Heat Low', 'Heat Medium', 'Heat High', 'Auto', 'Cool Low', 'Cool Medium', 'Cool High'];
 const mkE = () => [
@@ -107,12 +144,68 @@ const mkE = () => [
   ['button.' + P + 'reproduzir_peido', 'boombox', 'unknown', {}],
 ];
 
+// TeslaMate (descoberta automática por MQTT): sensor.tesla_<nome>, sem translation_key, só leitura
+const TM = 'dev_tm', TP = 'tesla_';
+const mkTM = () => {
+  const chg = q.get('chg') || 'disconnected', on = chg !== 'disconnected';
+  return [
+    ['sensor.' + TP + 'battery_level', '79', { unit_of_measurement: '%', device_class: 'battery' }],
+    ['sensor.' + TP + 'usable_battery_level', q.get('bat') || '78', { unit_of_measurement: '%', device_class: 'battery' }],
+    ['sensor.' + TP + 'rated_battery_range', q.get('rng') || '409', { unit_of_measurement: 'km' }],
+    ['sensor.' + TP + 'est_battery_range', '371', { unit_of_measurement: 'km' }],
+    ['sensor.' + TP + 'state', chg === 'charging' ? 'Charging' : 'Online', {}],
+    ['sensor.' + TP + 'charging_state', { charging: 'Charging', complete: 'Complete', stopped: 'Stopped' }[chg] || 'Disconnected', {}],
+    ['binary_sensor.' + TP + 'charging_state', chg === 'charging' ? 'on' : 'off', { device_class: 'battery_charging' }],
+    ['sensor.' + TP + 'charger_power', chg === 'charging' ? '11' : '0', { unit_of_measurement: 'kW' }],
+    ['sensor.' + TP + 'charge_energy_added', q.get('kwh') || '22.4', { unit_of_measurement: 'kWh' }],
+    ['sensor.' + TP + 'charge_limit_soc', '80', { unit_of_measurement: '%' }],
+    ['sensor.' + TP + 'time_to_full_charge', '1.25', { unit_of_measurement: 'h', device_class: 'duration' }],
+    ['binary_sensor.' + TP + 'plugged_in', on ? 'on' : 'off', { device_class: 'plug' }],
+    ['binary_sensor.' + TP + 'charge_port_door_open', q.get('port') || on ? 'on' : 'off', { device_class: 'opening' }],
+    ['sensor.' + TP + 'odometer', '23421', { unit_of_measurement: 'km' }],
+    ['sensor.' + TP + 'inside_temp', '19.5', { unit_of_measurement: '°C' }],
+    ['sensor.' + TP + 'outside_temp', '14', { unit_of_measurement: '°C' }],
+    ['sensor.' + TP + 'tpms_pressure_fl', '2.9', { unit_of_measurement: 'bar' }],
+    ['sensor.' + TP + 'tpms_pressure_fr', '2.9', { unit_of_measurement: 'bar' }],
+    ['sensor.' + TP + 'tpms_pressure_rl', q.get('tw') ? '2.4' : '2.9', { unit_of_measurement: 'bar' }],
+    ['sensor.' + TP + 'tpms_pressure_rr', '3.0', { unit_of_measurement: 'bar' }],
+    ['binary_sensor.' + TP + 'tpms_soft_warning_fl', 'off', {}],
+    ['binary_sensor.' + TP + 'tpms_soft_warning_fr', 'off', {}],
+    ['binary_sensor.' + TP + 'tpms_soft_warning_rl', q.get('tw') ? 'on' : 'off', {}],
+    ['binary_sensor.' + TP + 'tpms_soft_warning_rr', 'off', {}],
+    ['sensor.' + TP + 'shift_state', 'P', {}],
+    ['sensor.' + TP + 'speed', 'unknown', { unit_of_measurement: 'km/h' }],
+    ['device_tracker.' + TP + 'location', 'home', { latitude: 38.7, longitude: -9.1 }],
+    ['device_tracker.' + TP + 'active_route_location', 'unknown', {}],
+    ['sensor.' + TP + 'location', '38.7,-9.1', {}],
+    ['sensor.' + TP + 'since', '2026-11-27T08:00:00+00:00', { device_class: 'timestamp' }],
+    ['sensor.' + TP + 'display_name', 'K.I.T.T.', {}],
+    ['binary_sensor.' + TP + 'healthy', 'off', { device_class: 'problem' }],
+    ['update.' + TP + 'update', 'off', {}],
+    ['binary_sensor.' + TP + 'locked', q.get('lock') === 'unlocked' ? 'on' : 'off', { device_class: 'lock' }],
+    ['binary_sensor.' + TP + 'sentry_mode', 'on', {}],
+    ['binary_sensor.' + TP + 'is_climate_on', q.get('clim') && q.get('clim') !== 'off' ? 'on' : 'off', {}],
+    ['binary_sensor.' + TP + 'frunk_open', q.get('frunk') ? 'on' : 'off', { device_class: 'door' }],
+    ['binary_sensor.' + TP + 'trunk_open', q.get('trunk') ? 'on' : 'off', { device_class: 'door' }],
+    ['binary_sensor.' + TP + 'doors_open', q.get('door') || q.get('doors') ? 'on' : 'off', { device_class: 'door' }],
+    ['binary_sensor.' + TP + 'driver_front_door_open', q.get('door') ? 'on' : 'off', { device_class: 'door' }],
+    ['binary_sensor.' + TP + 'driver_rear_door_open', q.get('doors') ? 'on' : 'off', { device_class: 'door' }],
+    ['binary_sensor.' + TP + 'passenger_front_door_open', q.get('doors') ? 'on' : 'off', { device_class: 'door' }],
+    ['binary_sensor.' + TP + 'passenger_rear_door_open', q.get('doors') ? 'on' : 'off', { device_class: 'door' }],
+    ['binary_sensor.' + TP + 'windows_open', 'off', { device_class: 'window' }],
+  ];
+};
+
 const states = {}, entities = {};
 function setup() {   // (re)cria as entidades da integração escolhida
   for (const k in states) delete states[k]; for (const k in entities) delete entities[k];
-  for (const [id, tk, st, attrs] of mkE()) {
+  if (INTEG !== 'teslamate') for (const [id, tk, st, attrs] of mkE()) {
     states[id] = { entity_id: id, state: st, attributes: attrs, last_changed: '', last_updated: '' };
-    entities[id] = { entity_id: id, device_id: DEV, translation_key: tk, platform: CUSTOM ? 'tesla_custom' : 'tessie' };
+    entities[id] = { entity_id: id, device_id: DEV, translation_key: tk, platform: CUSTOM ? 'tesla_custom' : INTEG === 'fleet_tm' ? 'tesla_fleet' : 'tessie' };
+  }
+  if (INTEG === 'teslamate' || INTEG === 'fleet_tm') for (const [id, st, attrs] of mkTM()) {
+    states[id] = { entity_id: id, state: st, attributes: attrs, last_changed: '', last_updated: '' };
+    entities[id] = { entity_id: id, device_id: TM, platform: 'mqtt' };
   }
 }
 setup();
@@ -123,7 +216,9 @@ window.__calls = log;
 const card = document.createElement('garage-for-tesla-card');
 let hass;
 function push() {
-  hass = { states: { ...states }, entities, config: { version: '2026.11.2' }, devices: { [DEV]: { id: DEV, name: 'K.I.T.T.', name_by_user: q.get('name') || 'K.I.T.T.', manufacturer: 'Tesla', model: 'Model 3' } },
+  hass = { states: { ...states }, entities, config: { version: '2026.11.2' }, devices: {
+      ...(INTEG !== 'teslamate' ? { [DEV]: { id: DEV, name: 'K.I.T.T.', name_by_user: q.get('name') || 'K.I.T.T.', manufacturer: 'Tesla', model: 'Model 3' } } : {}),
+      ...(INTEG === 'teslamate' || INTEG === 'fleet_tm' ? { [TM]: { id: TM, name: 'K.I.T.T.', name_by_user: null, manufacturer: 'Tesla', model: 'Model 3 LR' } } : {}) },
     locale: { language: q.get('lang') || 'pt-PT' }, language: q.get('lang') || 'pt-PT', themes: { darkMode: q.get('theme') !== 'light' },
     formatEntityState: s => s.state === 'home' ? 'Casa' : s.state,
     callService: async (d, s, data) => {
@@ -151,10 +246,32 @@ function push() {
   card.hass = hass;
 }
 extra = await glbFor(MODEL);
-card.setConfig({ car_model: MODEL, color: q.get('color') || 'pearl_white', interior: q.get('int') || 'white', theme: q.get('theme') || 'auto', ...extra, ...(q.get('fb') === '0' ? { feedback: false } : {}), ...(q.get('nocar') ? { device_id: 'none' } : {}), ...(q.get('h') ? { height: q.get('h') } : {}) });
+const tmCfg = () => INTEG === 'fleet_tm' ? { teslamate_device_id: TM } : {};
+card.setConfig({ car_model: MODEL, color: q.get('color') || 'pearl_white', interior: q.get('int') || 'white', theme: q.get('theme') || 'auto', ...extra, ...tmCfg(), ...(q.get('fb') === '0' ? { feedback: false } : {}), ...(q.get('nocar') ? { device_id: 'none' } : {}), ...(q.get('h') ? { height: q.get('h') } : {}) });
 push();
 document.getElementById('app').appendChild(card);
 window.__card = card;
+
+// editor do cartão num painel por cima (mockup: opção "Editor"; teste: ?ed=1)
+const edPanel = document.createElement('div'); edPanel.id = 'edpanel'; edPanel.style.display = 'none';
+const edCss = document.createElement('style');
+edCss.textContent = `#edpanel{position:fixed;z-index:50;right:16px;top:64px;width:380px;max-width:calc(100vw - 32px);max-height:calc(100vh - 80px);overflow:auto;box-sizing:border-box;padding:16px 18px;border-radius:14px;background:#1c1c1e;color:#e6e6e6;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+#edpanel h3{margin:0 0 12px;font-size:16px}#edpanel .hf{display:block;margin-bottom:14px}#edpanel .hl{display:block;font-size:12px;color:#9aa0a8;margin-bottom:4px}
+#edpanel select,#edpanel input:not([type=checkbox]){width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid #3a3a3c;background:#2c2c2e;color:#fff;font:inherit}
+#edpanel .hh{display:block;margin-top:5px;font-size:12px;color:#9aa0a8}#edpanel .hm{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px}
+body.light #edpanel{background:#fff;color:#1b1d20}body.light #edpanel select,body.light #edpanel input:not([type=checkbox]){background:#fff;color:#111;border-color:#ccc}`;
+document.head.appendChild(edCss); document.body.appendChild(edPanel);
+let edCfg = null, edEl = null;
+function showEditor() {
+  if (!edEl) {
+    edEl = document.createElement('garage-for-tesla-card-editor');
+    edEl.addEventListener('config-changed', e => { edCfg = e.detail.config; card.setConfig({ ...edCfg, ...extra }); edEl.setConfig(edCfg); });
+    edPanel.innerHTML = '<h3>Editor do cartão</h3>'; edPanel.appendChild(edEl);
+  }
+  const base = { car_model: card._config.car_model, color: card._config.color, interior: card._config.interior || 'white', theme: card._config.theme, ...tmCfg() };
+  edEl.hass = hass; edEl.setConfig(base);
+}
+if (q.get('ed')) { edPanel.style.display = ''; showEditor(); }
 
 // barra de demonstração (só no mockup publicado)
 if (demo) {
@@ -189,19 +306,32 @@ if (demo) {
     <label><input type="checkbox" id="dChg"> A carregar</label>
     <label><input type="checkbox" id="dTw"> Aviso de pneu</label>
     <label><input type="checkbox" id="dDoor"> Porta aberta</label>
+    <label><input type="checkbox" id="dUnl"> Destrancado</label>
     <label><input type="checkbox" id="dMob"> Telemóvel</label>
-    <label>Integração <select id="dIntg"><option value="tessie">Tessie / Teslemetry / Fleet</option><option value="custom">Tesla Custom</option></select></label>`;
+    <label>Integração <select id="dIntg"><option value="tessie">Tessie / Teslemetry / Fleet</option><option value="custom">Tesla Custom</option><option value="teslamate">Só TeslaMate</option><option value="fleet_tm">Tesla Fleet + TeslaMate</option></select></label>
+    <label><input type="checkbox" id="dEd"> Editor</label>`;
   const app = document.getElementById('app');
   const apply = () => {
-    card.setConfig({ car_model: C.model, color: C.color, interior: C.interior, theme: C.theme, ...extra });
+    card.setConfig({ car_model: C.model, color: C.color, interior: C.interior, theme: C.theme, ...extra, ...tmCfg() });
     const chg = C.chg ? 'charging' : 'disconnected';
-    const cab = 'binary_sensor.' + P + (CUSTOM ? 'charger' : 'cabo_de_carregamento'), sw = 'switch.' + P + (CUSTOM ? 'charger' : 'carregar');
-    if (!CUSTOM) states['sensor.' + P + 'a_carregar'] = { ...states['sensor.' + P + 'a_carregar'], state: chg };
-    states[cab] = { ...states[cab], state: C.chg ? 'on' : 'off', attributes: CUSTOM ? { ...states[cab].attributes, charging_state: TC_STATE[chg] } : states[cab].attributes };
-    states[sw] = { ...states[sw], state: C.chg ? 'on' : 'off' };
-    states['binary_sensor.' + P + 'aviso_de_pressao_do_pneu_traseiro_esquerdo'] = { ...states['binary_sensor.' + P + 'aviso_de_pressao_do_pneu_traseiro_esquerdo'], state: C.tw ? 'on' : 'off' };
-    states['sensor.' + P + 'pressao_do_pneu_traseiro_esquerdo'] = { ...states['sensor.' + P + 'pressao_do_pneu_traseiro_esquerdo'], state: C.tw ? '2.4' : '2.9' };
-    states['binary_sensor.' + P + 'porta_da_frente_do_condutor'] = { ...states['binary_sensor.' + P + 'porta_da_frente_do_condutor'], state: C.door ? 'on' : 'off' };
+    const put = (id, st) => { if (states[id]) states[id] = { ...states[id], state: st }; };
+    if (INTEG !== 'teslamate') {
+      const cab = 'binary_sensor.' + P + (CUSTOM ? 'charger' : 'cabo_de_carregamento'), sw = 'switch.' + P + (CUSTOM ? 'charger' : 'carregar');
+      if (!CUSTOM) states['sensor.' + P + 'a_carregar'] = { ...states['sensor.' + P + 'a_carregar'], state: chg };
+      states[cab] = { ...states[cab], state: C.chg ? 'on' : 'off', attributes: CUSTOM ? { ...states[cab].attributes, charging_state: TC_STATE[chg] } : states[cab].attributes };
+      states[sw] = { ...states[sw], state: C.chg ? 'on' : 'off' };
+      states['binary_sensor.' + P + 'aviso_de_pressao_do_pneu_traseiro_esquerdo'] = { ...states['binary_sensor.' + P + 'aviso_de_pressao_do_pneu_traseiro_esquerdo'], state: C.tw ? 'on' : 'off' };
+      states['sensor.' + P + 'pressao_do_pneu_traseiro_esquerdo'] = { ...states['sensor.' + P + 'pressao_do_pneu_traseiro_esquerdo'], state: C.tw ? '2.4' : '2.9' };
+      states['binary_sensor.' + P + 'porta_da_frente_do_condutor'] = { ...states['binary_sensor.' + P + 'porta_da_frente_do_condutor'], state: C.door ? 'on' : 'off' };
+    }
+    // TeslaMate: os mesmos interruptores do mockup
+    put('sensor.' + TP + 'charging_state', C.chg ? 'Charging' : 'Disconnected'); put('binary_sensor.' + TP + 'charging_state', C.chg ? 'on' : 'off');
+    put('sensor.' + TP + 'state', C.chg ? 'Charging' : 'Online'); put('sensor.' + TP + 'charger_power', C.chg ? '11' : '0');
+    put('binary_sensor.' + TP + 'plugged_in', C.chg ? 'on' : 'off'); put('binary_sensor.' + TP + 'charge_port_door_open', C.chg ? 'on' : 'off');
+    put('binary_sensor.' + TP + 'tpms_soft_warning_rl', C.tw ? 'on' : 'off'); put('sensor.' + TP + 'tpms_pressure_rl', C.tw ? '2.4' : '2.9');
+    put('binary_sensor.' + TP + 'driver_front_door_open', C.door ? 'on' : 'off'); put('binary_sensor.' + TP + 'doors_open', C.door ? 'on' : 'off');
+    put('lock.' + P + 'fechadura', C.unl ? 'unlocked' : 'locked'); put('binary_sensor.' + TP + 'locked', C.unl ? 'on' : 'off');
+    edPanel.style.display = C.ed ? '' : 'none'; if (C.ed) showEditor();
     LAG = CUSTOM ? 30000 : 0;   // Tesla Custom: o HA só sabe do clima na leitura seguinte
     app.classList.toggle('mobile', C.mobile);
     document.body.classList.toggle('light', C.theme === 'light');
@@ -219,8 +349,10 @@ if (demo) {
   demo.querySelector('#dChg').onchange = e => { C.chg = e.target.checked; apply(); };
   demo.querySelector('#dTw').onchange = e => { C.tw = e.target.checked; apply(); };
   demo.querySelector('#dDoor').onchange = e => { C.door = e.target.checked; apply(); };
+  demo.querySelector('#dUnl').onchange = e => { C.unl = e.target.checked; apply(); };
   demo.querySelector('#dMob').onchange = e => { C.mobile = e.target.checked; apply(); };
-  demo.querySelector('#dIntg').value = CUSTOM ? 'custom' : 'tessie';
-  demo.querySelector('#dIntg').onchange = e => { CUSTOM = e.target.value === 'custom'; setup(); apply(); };
+  demo.querySelector('#dIntg').value = INTEG;
+  demo.querySelector('#dIntg').onchange = e => { INTEG = e.target.value; CUSTOM = INTEG === 'custom'; setup(); apply(); };
+  demo.querySelector('#dEd').onchange = e => { C.ed = e.target.checked; apply(); };
   apply();
 }
